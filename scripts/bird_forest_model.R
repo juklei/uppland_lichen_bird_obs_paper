@@ -64,11 +64,11 @@ bf <- bf[!bf$species %in% c("grona", "bergk", "ekore", "mard", "gravg"), ]
 
 bf$dist_bin[bf$dist <= (50/sqrt(2))] <- "0to35m"
 bf$dist_bin[bf$dist > (50/sqrt(2))] <- "35to50m"
-
-T1 <- bf
-T1$dist_bin <- "0to50"
-
-bf <- rbind(bf, T1)
+# 
+# T1 <- bf
+# T1$dist_bin <- "0to50"
+# 
+# bf <- rbind(bf, T1)
 
 ## For now, take only obstime <=15min to compare years:
 ## Later all observations might enter analysis by means if rarefaction curves
@@ -104,25 +104,47 @@ str(red1)
 hist(red1$species_nr)
 
 ## Transform data set to list for JAGS:
-D1 <- as.list(red1)
 
-D1$obs_year <- as.factor(D1$obs_year) ## Year must be a factor
+D1 <- as.list(NULL)
 
-## Add nlevels of group effects:
-D1$n_plot <- nlevels(D1$plot)
-D1$n_block <- nlevels(D1$block)
-D1$n_year <- nlevels(D1$obs_year)
-D1$n_observer <- nlevels(D1$observer)
-   
+## Observation:
+D1$id <- 1:nrow(red1)
+
+## Response:
+D1$species_nr <- red1$species_nr
+
+## Fixed:
+D1$nr_skarm_log_cent <- log(red1$nr_skarm+1)-mean(log(red1$nr_skarm+1))
+D1$dbin_35to50 <- ifelse(red1$dist_bin == "35to50", 1, 0)
+
+## Random:
+D1$plot <- as.numeric(red1$plot)
+D1$block <- as.numeric(red1$block)
+D1$year <- red1$obs_year-2015
+
+##Prediction:
+D1$dbin_35to50_pred <- c(0, 1)
+D1$nr_skarm_log_cent_pred <- seq(0, max(log(red1$nr_skarm+1)), 0.1) - 
+  mean(log(red1$nr_skarm+1))
+
+## Add nlevels of obs and group effects:
+D1$n_obs <- nrow(red1)
+D1$n_plot <- max(D1$plot)
+D1$n_block <- max(D1$block)
+D1$n_year <- max(D1$year)
+
 str(D1)
 
 ## Define initial values of parameters:
 inits <- list(list(alpha.mean = 1, 
+                   alpha.plot = 1,
+                   alpha.block = 1,
                    b1 = 0.1,
-                   sigma.plot.eff = 1,
-                   sigma.block.eff = 1,
-                   sigma.year.eff = 1,
-                   sigma.obs.eff = 1))
+                   b2 = 0,
+                   b3 = 0,
+                   sigma.alpha.plot = 1,
+                   sigma.alpha.block = 1,
+                   sigma.year.eff = 1))
 
 ## Load the JAGS model file:
 bsp_nr_nr_skarm <- "scripts/JAGS/bird_forest_JAGS_bsp_nr.R"
@@ -143,12 +165,15 @@ samples <- 10000
 n.thin <- 5 ## Takes only every fifth sample
 
 zc <- coda.samples(jm,
-                   variable.names = c("alpha.mean", 
-                                      "sigma.plot.eff",
-                                      "sigma.plot.eff",
-                                      "sigma.year.eff",
-                                      "sigma.obs.eff",
-                                      "b1"), 
+                   variable.names = c("alpha.mean",
+                                      "alpha.plot",
+                                      "alpha.block",
+                                      "b1",
+                                      "b2", 
+                                      "b3",
+                                      "sigma.alpha.plot",
+                                      "sigma.alpha.block",
+                                      "sigma.year.eff"), 
                    n.iter = samples, 
                    thin = n.thin) 
 
@@ -160,7 +185,7 @@ plot(zc) #look at the chains to see stability and mixing
 ## Generate samples from the posterior distribution with JAGS
 
 zj <- jags.samples(jm, 
-                   variable.names = c("alpha.mean", "b1", "output"), 
+                   variable.names = c("alpha.mean", "b1", "b2", "b3", "output"), 
                    n.iter = samples, 
                    thin = n.thin)
 
