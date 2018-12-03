@@ -1,4 +1,4 @@
-## IIn this script bird obs data used in the bird & lichen paper is modelled
+## In this script bird obs data used in the bird & lichen paper is modelled
 ## with different forest variables. A bayesian approach is used. Different 
 ## responses are modelled from species to community level.
 ##
@@ -11,12 +11,15 @@
 
 rm(list = ls())
 
+library(reshape)
 library(data.table)
 library(dplyr)
 library(boot)
 library(rjags)
 library(coda)
 library(corrgram)
+library(drc)
+library(unmarked)
 
 ## 2. Define or source functions used in this script ---------------------------
 
@@ -31,81 +34,142 @@ excl <- read.csv("data/non_experiment_include.csv")
 
 head(f_plot); head(b_obs); head(excl)
 
-## 4. Merge bird with forest data and exclude post treatment observations ------ 
-
-bf <- merge(b_obs, f_plot, all.x = TRUE, by = c("plot", "block"))
-
-bf <- merge(bf, excl, by = "plot")
-bf <- bf[!(bf$obs_year == 2018 & bf$include_2018 == "N"), -length(bf)]
-
-## 5. Explore and transform the data set for statistical analysis --------------
-
-## Look at explanatory variable correlations and export:
-
-dir.create("results")
-
-cor(unique(na.omit(bf[, c(17:19, 22:31)]))) %>% 
-  capture.output() %>% write(., "results/forest_correlations.txt")
+## Look at forest explanatory variable correlations and export:
 
 dir.create("figures")
 
 png("figures/forest_correlations.png", 3000, 1000, "px")
 
-corrgram(unique(na.omit(bf[, c(17:19, 22:31)])), 
+corrgram(unique(na.omit(f_plot[, c(6:8, 11:20)])), 
          lower.panel = panel.pie, upper.panel = panel.cor,
          cex.labels = 3)
 
 dev.off()
 
+## 4. Rearrange data set so it can be used in unmarked and JAGS. --------------- 
+##    Exclude post treatment data and unised species.
+##    This part might later be moved to general if usage the same in several
+##    analyses in this project.
+
+## Summarise time after sunrise per visit to become an observational
+## covariate in the analysis:
+b_obs <- as.data.table(b_obs)
+b_obs[, "mp_sunrise_visit" := mean(min_post_sunrise), 
+      by = c("plot", "obs_year", "visit")]
+
+## Make data set so we have all possible combinations of all visits
+## and all species seen during the whole survey.
+b_occ <- expand.grid.df(unique(b_obs[, c("block", 
+                                         "plot", 
+                                         "observer", 
+                                         "visit", 
+                                         "obs_year",
+                                         "obs_time",
+                                         "mp_sunrise_visit", 
+                                         "dp_march")]), 
+                        as.data.frame(levels(b_obs$species)))
+colnames(b_occ)[9] <- "species"
+
+## Merge with b_obs data set to aquire all information of observations
+## If a speces was not observed during a visit make obs 0, otherwise NA:
+
+## Add obs = 1 to b_obs:
+b_obs$observed <- 1
+
+## Merge all b_occ with matching b_obs:
+b_occ <- merge(b_occ, b_obs, all.x = TRUE, by = c("block", 
+                                                  "plot", 
+                                                  "observer", 
+                                                  "visit", 
+                                                  "obs_year",
+                                                  "obs_time",
+                                                  "species",
+                                                  "mp_sunrise_visit", 
+                                                  "dp_march"))
+
+## NA in observed are actually non-observations, so they will become 0:
+b_occ$observed[is.na(b_occ$observed)] <- 0
+
+## If everything went well the number of positive observations should be the 
+## nrow of b_obs:
+if(sum(b_occ$observed == 1) != nrow(b_obs)) print("You made a mistake!")
+
+## Now the observations need to be put into a format that fits the unmarked 
+## package and JAGS: Observational covariates are chosen here:
+b_occ <- dcast(setDT(b_occ), 
+               block + plot + observer + species + obs_year ~ visit, 
+               value.var = c("observed", 
+                             "mp_sunrise_visit",
+                             "dp_march",
+                             "obs_time"))
+
+## Merge with forest data:
+bf_occ <- merge(b_occ, f_plot, all.x = TRUE, by = c("plot", "block"))
+
+## Exclude plots on which surveys were performed after treatments:
+bf_occ <- merge(bf_occ, excl, by = "plot")
+bf_occ <- bf_occ[!(bf_occ$obs_year == 2018 & bf_occ$include_2018 == "N"), ]
+
 ## Exclude predators and siskins from obs
-bf <- bf[!bf$species %in% c("grona", "bergk", "ekore", "mard", "gravg"), ]
+bf_occ <- bf_occ[!bf_occ$species %in% c("grona", 
+                                        "bergk", 
+                                        "ekore", 
+                                        "mard", 
+                                        "gravg"), ]
 
-## Add distance categories:
+## 5. Run occupancy models using unmarked and forest covariate -----------------
 
-bf$dist_bin[bf$dist <= (50/sqrt(2))] <- "0to35m"
-bf$dist_bin[bf$dist > (50/sqrt(2))] <- "35to50m"
-# 
-# T1 <- bf
-# T1$dist_bin <- "0to50"
-# 
-# bf <- rbind(bf, T1)
+## Lets try it first for only one species, one observer in 2017 and nr_skarm:
+rodhe <- as.data.frame(bf_occ[bf_occ$species == "rodhe" & 
+                                bf_occ$obs_year == 2017, ])
 
-## For now, take only obstime <=15min to compare years:
-## Later all observations might enter analysis by means if rarefaction curves
-bf <- bf[bf$minutes_to_obs < 16, ]
+## Make an unmarkedFrame:
+um.rodhe <- unmarkedFrameOccu(y = as.matrix(rodhe[, c("observed_first",
+                                                      "observed_second",
+                                                      "observed_third",
+                                                      "observed_fourth",
+                                                      "observed_fifth")]),
+                              siteCovs = rodhe[, c("block", "nr_skarm")],
+                              obsCovs = list("date" = 
+                                               rodhe[, c("dp_march_first",
+                                                         "dp_march_second",
+                                                         "dp_march_third",
+                                                         "dp_march_fourth",
+                                                         "dp_march_fifth")]))
 
-## Add species numbers;
+## Fit occupancy model:
 
-bf <- as.data.table(bf)
+summary(um.rodhe)
+occu(~ date ~ nr_skarm, data = um.rodhe)
 
-## per year/plot/visit;
-bf[, "species_nr" := length(unique(species)), 
-   by = c("plot", "visit", "obs_year", "dist_bin")] 
+m.um.rodhe <- occu(~ 1 ~ 1, data = um.rodhe)
+backTransform(m.um.rodhe, "state")
+backTransform(m.um.rodhe, "det")
 
-## and per year/plot/visit/functional group;
-# bf[, "species_nr" := length(unique(species)), 
-#    by = c("plot", "visit", "obs_year", "dist_bin", "func_group")] 
+## 6. Run occupancy models using JAGS and forest covariates --------------------
 
-## 5. Reduce data set and make model species_nr or abundances ------------------
-
-## 5.a Predict nr_species with nr. umbrella spruce -----------------------------
-
-# Reduce data set and store as list:
-red1 <- na.omit(unique(bf[, c("plot",
-                              "block", 
-                              "visit",
-                              "observer",
-                              "obs_year", 
-                              "dist_bin", 
-                              "species_nr", 
-                              "nr_skarm"), ]))
-
-str(red1)
-hist(red1$species_nr)
+## Lets try it first for only one species, one observer in 2017 and nr_skarm:
+rodhe <- as.data.frame(bf_occ[bf_occ$species == "rodhe" & 
+                                bf_occ$obs_year == 2017, ])
 
 ## Transform data set to list for JAGS:
 
 D1 <- as.list(NULL)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Observation:
 D1$id <- 1:nrow(red1)
@@ -122,23 +186,19 @@ D1$plot <- as.numeric(red1$plot)
 D1$block <- as.numeric(red1$block)
 D1$year <- red1$obs_year-2015
 
+## N of groups:
+D1$n_plots <- max(D1$plot)
+D1$n_years <- max(D1$year)
+
 ##Prediction:
 D1$dbin_35to50_pred <- c(0, 1)
 D1$nr_skarm_log_cent_pred <- seq(0, max(log(red1$nr_skarm+1)), 0.1) - 
   mean(log(red1$nr_skarm+1))
 
-## Add nlevels of obs and group effects:
-D1$n_obs <- nrow(red1)
-D1$n_plot <- max(D1$plot)
-D1$n_block <- max(D1$block)
-D1$n_year <- max(D1$year)
-
 str(D1)
 
 ## Define initial values of parameters:
-inits <- list(list(alpha.mean = 1, 
-                   alpha.plot = 1,
-                   alpha.block = 1,
+inits <- list(list(alpha.plot = 1,
                    b1 = 0.1,
                    b2 = 0,
                    b3 = 0,
@@ -227,3 +287,28 @@ polygon(c(0:125, rev(0:125)),
 lines(0:125,  pred[1,], lty = "dashed", col = "blue")
 lines(0:125,  pred[3,], lty = "dashed", col = "blue")
 
+## Old:
+
+## Add distance categories:
+
+# bf$dist_bin[bf$dist <= (50/sqrt(2))] <- "0to35m"
+# bf$dist_bin[bf$dist > (50/sqrt(2))] <- "35to50m"
+# 
+# T1 <- bf
+# T1$dist_bin <- "0to50"
+# 
+# bf <- rbind(bf, T1)
+
+
+
+## Add species numbers;
+# 
+# bf <- as.data.table(bf)
+# 
+# ## per year/plot/visit;
+# bf[, "species_nr" := length(unique(species)),
+#    by = c("plot", "visit", "obs_year", "dist_bin")]
+# 
+# ## and per year/plot/visit/functional group;
+# bf[, "species_nr" := length(unique(species)),
+#    by = c("plot", "visit", "obs_year", "dist_bin", "func_group")]
