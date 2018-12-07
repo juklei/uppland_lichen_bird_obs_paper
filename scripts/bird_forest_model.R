@@ -3,7 +3,7 @@
 ## responses are modelled from species to community level.
 ##
 ## First edit: 20181122
-## Last edit: 20181123
+## Last edit: 20181207
 ##
 ## Author: Julian Klein
 
@@ -141,10 +141,6 @@ um.rodhe <- unmarkedFrameOccu(y = as.matrix(rodhe[, c("observed_first",
 
 summary(um.rodhe)
 occu(~ date ~ nr_skarm, data = um.rodhe)
-
-m.um.rodhe <- occu(~ 1 ~ 1, data = um.rodhe)
-backTransform(m.um.rodhe, "state")
-backTransform(m.um.rodhe, "det")
 
 ## 6. Run occupancy models using JAGS and forest covariates --------------------
 
