@@ -3,7 +3,7 @@
 ## is used. Different responses are modelled from species to community level.
 ##
 ## First edit: 20181207
-## Last edit: 20181207
+## Last edit: 20190116
 ##
 ## Author: Julian Klein
 
@@ -11,7 +11,6 @@
 
 rm(list = ls())
 
-library(reshape)
 library(data.table)
 library(dplyr)
 library(boot)
@@ -27,9 +26,10 @@ library(corrgram)
 
 dir("data")
 f_subplot <- read.csv("data/forest_data_uppland_subplot.csv")
+f_plot <- read.csv("data/forest_data_uppland_plot.csv")
 l_obs <- read.csv("data/lavar_uppland.csv")
 
-head(f_subplot); head(l_obs)
+head(f_subplot); head(f_plot); head(l_obs)
 
 ## Look at forest explanatory variable correlations and export:
 
@@ -38,6 +38,14 @@ dir.create("figures")
 png("figures/forest_correlations_subplot.png", 3000, 1000, "px")
 
 corrgram(unique(na.omit(f_subplot[, c(6:8, 11)])), 
+         lower.panel = panel.pie, upper.panel = panel.cor,
+         cex.labels = 3)
+
+dev.off()
+
+png("figures/forest_correlations_plot.png", 3000, 1000, "px")
+
+corrgram(unique(na.omit(f_plot[, c(6:8, 11:20)])), 
          lower.panel = panel.pie, upper.panel = panel.cor,
          cex.labels = 3)
 
@@ -70,7 +78,7 @@ l_obs_thallus <- melt(l_obs,
 ## Replace NA with 0 in species list to get thallus length 0:
 l_obs_thallus$thallus_length[is.na(l_obs_thallus$thallus_length)] <- 0
 
-## Merge l_obs_occ with forest data:
+## Merge l_obs_thallus with forest data:
 ltf <- merge(l_obs_thallus, 
              f_subplot[, c(1:3, 6:8, 11)], 
              all.x = TRUE, 
@@ -92,13 +100,34 @@ l_obs_occ <- as.data.table(l_obs_occ)
 l_obs_occ[, "observable" := ifelse(sum(observed) > 0, "yes", "no"),
           by = c("Tree.species", "Stem.S.Branches.B.T.Total", "species")]
 
-## Merge l_obs_occ with forest data:
-lof <- merge(l_obs_occ, 
-             f_subplot[, c(1:3, 6:8, 11)], 
-             all.x = TRUE, 
-             by = c("plot", "circle_10m")) 
+## Export non-observable and let Göran check. Adjust yes/no manually at this 
+## point and reimport data set:
 
-## 5. Start analysing lof ------------------------------------------------------ 
+# write
+# ...
+# read
+
+## Exclude non-observable:
+l_obs_occ_red <- l_obs_occ[l_obs_occ$observable == "yes", ]
+
+## Merge l_obs_occ_red with forest data:
+lof <- merge(l_obs_occ_red, f_plot[, c(1:3, 6:8, 11:20)], 
+             all.x = TRUE, 
+             by = "plot") 
+
+## Calculate per tree, which percentage of possible species is present on tree:
+lof[, "perc_obs" := (sum(observed)/length(observed)), 
+    by = c("plot", "Tree.no", "Stem.S.Branches.B.T.Total")]
+
+## Reduce to unique rows for percentage occupancy:
+lpof <- unique(lof[, -12])
+
+## 5. Explore data graphically -------------------------------------------------
+
+
+
+
+## 6. Start analysing lpof ----------------------------------------------------- 
 
 ## ...
 
