@@ -99,20 +99,21 @@ l_occ <- melt(l_obs,
 l_occ$observed[is.na(l_occ$observed)] <- 0
 
 ## Exclude combinations of tree species, stem/branches and lichen species that 
-## are never observed:
+## are never observed. Export non-observable and let Göran check. Adjust yes/no 
+## manually at this point and reimport data set:
+
 l_occ <- as.data.table(l_occ)
-l_occ[, "observable" := ifelse(sum(observed) > 0, "yes", "no"),
-      by = c("Tree.species", "Stem.S.Branches.B.T.Total", "species")]
+to_GT <- l_occ[, list("observable" = ifelse(sum(observed) > 0, "yes", "no")),
+               by = c("Tree.species", "Stem.S.Branches.B.T.Total", "species")]
 
-## Export non-observable and let Göran check. Adjust yes/no manually at this 
-## point and reimport data set:
+dir.create("temp")
+write.csv(to_GT, "temp/to_GT_observable_lichen.csv", row.names = FALSE)
+from_GT <- read.csv("temp/from_GT_observable_lichen.csv")
 
-# write
-# ...
-# read
-
-## Exclude non-observable:
-l_occ <- l_occ[l_occ$observable == "yes", ]
+## Keep all observations and non-observations in l_occ that are observable:
+l_occ <- merge(l_occ, 
+               from_GT[from_GT$observable == "yes", ],
+               by = c("Tree.species", "Stem.S.Branches.B.T.Total", "species"))
 
 ## Add total observed per tree:
 
@@ -127,9 +128,13 @@ l_occ <- rbind(l_occ, l_temp)
 
 l_occ <- l_occ[, -15]
 
-## Bin all deciduous tree species:
-levels(l_occ$Tree.species)[levels(l_occ$Tree.species) %in% 
-                             c("Qr", "Pt", "Ag", "Bp")] <- "Dc"
+## Bin all deciduous tree species into trivial and complex:
+levels(l_occ$Tree.species)[levels(l_occ$Tree.species) %in%
+                             c("Ag", "Bp")] <- "Dc_trivial"
+levels(l_occ$Tree.species)[levels(l_occ$Tree.species) %in%
+                             c("Qr", "Pt")] <- "Dc_complex"
+levels(l_occ$Tree.species)[levels(l_occ$Tree.species) %in%
+                             c("Dc_complex", "Dc_trivial")] <- "Dc"
 
 ## Merge l_occ with forest data:
 lof <- merge(l_occ, f_plot[, c(1:3, 6:8, 11:20)], all.x = TRUE, by = "plot") 
@@ -145,7 +150,7 @@ lof <- unique(lof[, -12])
 
 ## 5. Explore data graphically -------------------------------------------------
 
-g1 <- ggplot(lof, aes(x = PercentBelow5m, 
+g1 <- ggplot(lof, aes(x = Tree.diameter.130.cm.above.ground, 
                       y = perc_obs,
                       fill = Tree.species, 
                       color = Tree.species))
