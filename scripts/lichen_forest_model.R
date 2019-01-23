@@ -3,7 +3,7 @@
 ## is used. Different responses are modelled from species to community level.
 ##
 ## First edit: 20181207
-## Last edit: 20190116
+## Last edit: 20190122
 ##
 ## Author: Julian Klein
 
@@ -38,7 +38,7 @@ dir.create("figures")
 
 png("figures/forest_correlations_subplot.png", 3000, 1000, "px")
 
-corrgram(unique(na.omit(f_subplot[, c(6:8, 11)])), 
+corrgram(unique(na.omit(f_subplot[f_subplot$buffer == 10, c(6:8, 11:21)])), 
          lower.panel = panel.pie, upper.panel = panel.cor,
          cex.labels = 3)
 
@@ -46,13 +46,13 @@ dev.off()
 
 png("figures/forest_correlations_plot.png", 3000, 1000, "px")
 
-corrgram(unique(na.omit(f_plot[, c(6:8, 11:20)])), 
+corrgram(unique(na.omit(f_plot[, c(6:8, 11:22)])), 
          lower.panel = panel.pie, upper.panel = panel.cor,
          cex.labels = 3)
 
 dev.off()
 
-## 4. Rearrange lichen data set and merge with forest data for analysis. ------- 
+## 4. Rearrange lichen data set to merge with forest data for analysis. -------- 
 
 ## Change names of plot and circles for merging with forest data:
 
@@ -71,6 +71,131 @@ l_obs_cut <- l_obs[is.na(l_obs$Tree.no), c(2:3, 8:9)]
 ## Reduce l_obs to only uncut trees:
 l_obs <- l_obs[!is.na(l_obs$Tree.no), c(2:7, 10:14, 17:112)]
 
+## Make data frame based on occupancy of all species per tree:
+l_occ <- melt(l_obs, 
+              id.vars = colnames(l_obs)[1:11],
+              measure.vars = colnames(l_obs)[c(12:17, 19:100, 102:107)],
+              value.name = "observed",
+              variable.name = "species")
+
+## Replace NA with 0 in species list to get presence absence per tree:
+l_occ$observed[is.na(l_occ$observed)] <- 0
+
+## Exclude combinations of tree species, stem/branches and lichen species that 
+## are never observed. Export non-observable and let Göran check. Adjust yes/no 
+## manually at this point and reimport data set:
+
+l_occ <- as.data.table(l_occ)
+to_GT <- l_occ[, list("observable" = ifelse(sum(observed) > 0, "yes", "no")),
+               by = c("Tree.species", "Stem.S.Branches.B.T.Total", "species")]
+
+dir.create("temp")
+write.csv(to_GT, "temp/to_GT_observable_lichen.csv", row.names = FALSE)
+from_GT <- read.csv("temp/from_GT_observable_lichen.csv")
+
+## Keep all observations and non-observations in l_occ that are observable:
+l_occ <- merge(l_occ, 
+               from_GT[from_GT$observable == "yes", ],
+               by = c("Tree.species", "Stem.S.Branches.B.T.Total", "species"))
+
+## We want to define the block species pool and reduce data set to species 
+## observable per block:
+
+## We need "block" from the forest data to define block species pool:
+l_occ <- merge(l_occ, f_plot[, c("plot", "block")], by = "plot")
+
+l_occ[, "block_pool" := ifelse(sum(observed) > 0, "yes", "no"),
+      by = c("block", "species")]
+
+## Exclude non-available species per block:
+l_occ <- l_occ[l_occ$block_pool == "yes", ]
+
+## Add total observed per tree:
+
+l_temp <- l_occ[, "observed_t" := ifelse(sum(observed) > 0, 1, 0),
+                by = c("plot", "Tree.no", "species")]
+
+l_temp$observed <- l_temp$observed_t
+l_temp$Stem.S.Branches.B.T.Total <- "T"
+l_temp <- unique(l_temp)
+
+l_occ <- rbind(l_occ, l_temp)
+l_occ <- l_occ[, -17]
+
+## Calculate per tree, which percentage of possible species and the absolute 
+## number of species present on that tree:
+lo_tree <- unique(l_occ[, list("circle_10m" = circle_10m,
+                               "tree_sp" = Tree.species,
+                               "tree_dbh" = Tree.diameter.130.cm.above.ground,
+                               "perc_obs" = sum(observed)/length(observed), 
+                               "richness" = sum(observed)),
+                        by = c("plot", "Tree.no", "Stem.S.Branches.B.T.Total")])
+
+## Calculate per plot, which percentage of possible species and the absolute 
+## number of species present in that plot:
+
+## ...lo_plot <- ...
+
+## 5. Merge the different lichen data sets with forest data adjusted for ------- 
+##    this question.
+
+## From plot level We want to have the average dbh per plot as a proxy for age
+## and the laser measurement:
+lof_tree <- merge(lo_tree, 
+                  f_plot[, c("plot", "average_dbh_all_alive", "laser_mean")],
+                  all.x = TRUE,
+                  by = "plot")
+
+## Then we want to add from the subplot level, the lidar measurments:
+lof_tree <- merge(lof_tree,
+                  f_subplot[, c(1:3, 6:9)],
+                  all.x = TRUE,
+                  by = c("plot", "circle_10m"),
+                  allow.cartesian = TRUE)
+
+## Bin all deciduous tree species into trivial and complex:
+levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in% 
+                           c("Ag", "Bp")] <- "Dc_trivial"
+levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in% 
+                           c("Qr", "Pt")] <- "Dc_complex"
+levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in% 
+                           c("Dc_complex", "Dc_trivial")] <- "Dc"
+
+## 6. Explore data graphically -------------------------------------------------
+
+## Categorise plot_dbh for age:
+T1 <- mean(lof_tree$average_dbh_all_alive, na.rm = TRUE)
+lof_tree$plot_dbh <- ifelse(lof_tree$average_dbh_all_alive > T1,
+                            "wide plot dbh", 
+                            "narrow plot dbh")
+
+g1 <- ggplot(lof_tree,
+             aes(x = PercentBelow5m, 
+                 y = richness, 
+                 fill = tree_sp, 
+                 color = tree_sp))
+g2 <- geom_point()
+g3 <- stat_smooth(method = "lm", size = 2, formula = y ~ log(x))            
+g4 <- facet_grid(. ~ plot_dbh, scales = "free") 
+
+dir.create("figures")
+
+png("figures/richness_PB5.png", 2000, 1000, "px")
+
+g1+g3+theme_bw(30)
+
+dev.off()
+
+## 6. Start analysing lof_pt ----------------------------------------------------- 
+
+## ...
+
+## -------------------------------END-------------------------------------------
+
+
+
+## Old:
+
 ## Exclude thallus length measurments and make seperate data set:
 
 l_obs_thallus <- melt(l_obs,
@@ -87,72 +212,6 @@ ltf <- merge(l_obs_thallus,
              f_subplot[, c(1:3, 6:8, 11)], 
              all.x = TRUE, 
              by = c("plot", "circle_10m")) 
-
-## Make data frame based on occupancy of all species per tree:
-l_occ <- melt(l_obs, 
-              id.vars = colnames(l_obs)[1:11],
-              measure.vars = colnames(l_obs)[c(12:17, 19:100, 102:107)],
-              value.name = "observed",
-              variable.name = "species")
-
-## Replace NA with 0 in species list to get presence absence per tree:
-l_occ$observed[is.na(l_occ$observed)] <- 0
-
-## Exclude combinations of tree species, stem/branches and lichen species that 
-## are never observed. Export non-observable and let Göran check. Adjust yes/no 
-## manually at this point and reimport data set:
-
-l_occ <- as.data.table(l_occ)
-# to_GT <- l_occ[, list("observable" = ifelse(sum(observed) > 0, "yes", "no")),
-#                by = c("Tree.species", "Stem.S.Branches.B.T.Total", "species")]
-# 
-# dir.create("temp")
-# write.csv(to_GT, "temp/to_GT_observable_lichen.csv", row.names = FALSE)
-from_GT <- read.csv("temp/from_GT_observable_lichen.csv")
-
-## Keep all observations and non-observations in l_occ that are observable:
-l_occ <- merge(l_occ, 
-               from_GT[from_GT$observable == "yes", ],
-               by = c("Tree.species", "Stem.S.Branches.B.T.Total", "species"))
-
-## Add total observed per tree:
-
-l_temp <- l_occ[, "observed_t" := ifelse(sum(observed) > 0, 1, 0),
-                by = c("plot", "Tree.no", "species")]
-
-l_temp$observed <- l_temp$observed_t
-l_temp$Stem.S.Branches.B.T.Total <- "T"
-l_temp <- unique(l_temp)
-
-l_occ <- rbind(l_occ, l_temp)
-
-l_occ <- l_occ[, -15]
-
-## Bin all deciduous tree species into trivial and complex:
-levels(l_occ$Tree.species)[levels(l_occ$Tree.species) %in%
-                             c("Ag", "Bp")] <- "Dc_trivial"
-levels(l_occ$Tree.species)[levels(l_occ$Tree.species) %in%
-                             c("Qr", "Pt")] <- "Dc_complex"
-levels(l_occ$Tree.species)[levels(l_occ$Tree.species) %in%
-                             c("Dc_complex", "Dc_trivial")] <- "Dc"
-
-## Merge l_occ with forest data:
-lof <- merge(l_occ, f_plot[, c(1:3, 6:8, 11:20)], all.x = TRUE, by = "plot") 
-# lof <- merge(l_occ, 
-#              f_subplot[, c(1:3, 6:8, 11)], 
-#              all.x = TRUE, 
-#              by = c("plot", "circle_10m")) 
-
-## Calculate per tree, which percentage of possible species and the absolute 
-## number of species present on that tree:
-lof[, c("perc_obs", "richness") := list((sum(observed)/length(observed)),
-                                        sum(observed)), 
-    by = c("plot", "Tree.no", "Stem.S.Branches.B.T.Total")]
-
-## Reduce to unique rows, excluding species to look at per tree richness and 
-## perc_obs, representing percentage of diversity potential:
-lof <- as.data.frame(lof)
-lof_pt <- unique(lof[, -which(colnames(lof) == "species")])
 
 ## Calculate cumultative lichen diversity per plot for different combinations of
 ## tree species to look at relative contribution od tree species:
@@ -172,7 +231,7 @@ T_all$Tree.species <- "all"
 ## Calculate richness, nr. of trees and mean dbh per plot for each tree group:
 
 lof_pp <- as.data.table(lof_pp)
-lof_pp[, c("nr_tress", "average_dbh", "richness") := 
+lof_pp[, c("nr_trees", "average_dbh", "richness") := 
          list(length(unique(Tree.no)), 
               mean(unique(.SD[, c("Tree.no", 
                                   "Tree.diameter.130.cm.above.ground")])
@@ -182,7 +241,7 @@ lof_pp[, c("nr_tress", "average_dbh", "richness") :=
        by = c("plot", "Tree.species")]
 
 T_conif <- as.data.table(T_conif)
-T_conif[, c("nr_tress", "average_dbh", "richness") := 
+T_conif[, c("nr_trees", "average_dbh", "richness") := 
           list(length(unique(Tree.no)), 
                mean(unique(.SD[, c("Tree.no", 
                                    "Tree.diameter.130.cm.above.ground")])
@@ -192,7 +251,7 @@ T_conif[, c("nr_tress", "average_dbh", "richness") :=
         by = "plot"]
 
 T_all <- as.data.table(T_all)
-T_all[, c("nr_tress", "average_dbh", "richness") := 
+T_all[, c("nr_trees", "average_dbh", "richness") := 
         list(length(unique(Tree.no)), 
              mean(unique(.SD[, c("Tree.no", 
                                  "Tree.diameter.130.cm.above.ground")])
@@ -206,37 +265,3 @@ lof_pp <- rbind(lof_pp, T_conif, T_all)
 
 ## Chose desired columns:
 lof_pp <- unique(lof_pp[, c(1:2, 15, 17:32)])
-
-## 5. Explore data graphically -------------------------------------------------
-
-## Categorise dbh:
-T1 <- mean(lof_pt$Tree.diameter.130.cm.above.ground, na.rm = TRUE)
-lof_pt$dbh_cat <- ifelse(lof_pt$Tree.diameter.130.cm.above.ground > T1, 
-                         "wide stem", 
-                         "narrow stem")
-
-## Categorise forest_height:
-T2 <- mean(lof_pp$ElevP95, na.rm = TRUE)
-lof_pp$E95_cat <- ifelse(lof_pp$ElevP95 > T2, "high forest", "low forest")
-
-g1 <- ggplot(lof_pp, aes(x = PercentBelow5m, 
-                         y = richness,
-                         fill = Tree.species, 
-                         color = Tree.species))
-g2 <- geom_point()
-g3 <- stat_smooth(method = "lm", size = 2, formula = y ~ log(x))            
-g4 <- facet_grid(E95_cat ~ .) 
-
-dir.create("figures")
-
-png("figures/richness_PB.png", 2000, 1000, "px")
-
-g1+g3+g4+theme_bw(30)
-
-dev.off()
-
-## 6. Start analysing lof_pt ----------------------------------------------------- 
-
-## ...
-
-## -------------------------------END-------------------------------------------
