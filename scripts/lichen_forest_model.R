@@ -134,7 +134,16 @@ lo_tree <- unique(l_occ[, list("circle_10m" = circle_10m,
 ## Calculate per plot, which percentage of possible species and the absolute 
 ## number of species present in that plot:
 
-## ...lo_plot <- ...
+lo_plot <- l_occ[, list("circle_10m" = unique(circle_10m),
+                        "nr_trees" = length(unique(Tree.no)), 
+                        "average_tree_dbh" = 
+  mean(unique(.SD[, 10:11])$Tree.diameter.130.cm.above.ground, na.rm = TRUE), 
+                        "nr_tree_sp" = length(unique(Tree.species)),
+                        "richness" = 
+  nrow(unique(.SD[.SD$observed == 1, "species"])), 
+                        "perc_obs" = 
+  nrow(unique(.SD[.SD$observed == 1,"species"]))/length(unique(species))),
+                 by = "plot"]
 
 ## 5. Merge the different lichen data sets with forest data adjusted for ------- 
 ##    this question.
@@ -142,6 +151,11 @@ lo_tree <- unique(l_occ[, list("circle_10m" = circle_10m,
 ## From plot level We want to have the average dbh per plot as a proxy for age
 ## and the laser measurement:
 lof_tree <- merge(lo_tree, 
+                  f_plot[, c("plot", "average_dbh_all_alive", "laser_mean")],
+                  all.x = TRUE,
+                  by = "plot")
+
+lof_plot <- merge(lo_plot, 
                   f_plot[, c("plot", "average_dbh_all_alive", "laser_mean")],
                   all.x = TRUE,
                   by = "plot")
@@ -161,36 +175,85 @@ levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
 levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in% 
                            c("Dc_complex", "Dc_trivial")] <- "Dc"
 
+lof_plot <- merge(lof_plot,
+                  f_subplot[, c(1:3, 6:9)],
+                  all.x = TRUE,
+                  by = c("plot", "circle_10m"),
+                  allow.cartesian = TRUE)
+
 ## 6. Explore data graphically -------------------------------------------------
 
 ## Categorise plot_dbh for age:
+
 T1 <- mean(lof_tree$average_dbh_all_alive, na.rm = TRUE)
+
 lof_tree$plot_dbh <- ifelse(lof_tree$average_dbh_all_alive > T1,
                             "wide plot dbh", 
                             "narrow plot dbh")
+lof_plot$plot_dbh <- ifelse(lof_plot$average_dbh_all_alive > T1,
+                            "wide plot dbh", 
+                            "narrow plot dbh")
 
-g1 <- ggplot(lof_tree,
+## Factorise nr. of tree species:
+lof_plot$nr_tree_sp <- as.factor(lof_plot$nr_tree_sp)
+
+g1 <- ggplot(lof_plot, ## Don't forget to reduce data set for non lidar vars
              aes(x = PercentBelow5m, 
-                 y = richness, 
-                 fill = tree_sp, 
-                 color = tree_sp))
+                 y = perc_obs, 
+                 fill = nr_tree_sp, 
+                 color = nr_tree_sp))
 g2 <- geom_point()
 g3 <- stat_smooth(method = "lm", size = 2, formula = y ~ log(x))            
-g4 <- facet_grid(. ~ plot_dbh, scales = "free") 
+g4 <- facet_grid(buffer ~ ., scales = "free") 
 
 dir.create("figures")
 
 png("figures/richness_PB5.png", 2000, 1000, "px")
 
-g1+g3+theme_bw(30)
+g1+g3+g4+theme_bw(20)
 
 dev.off()
 
-## 6. Start analysing lof_pt ----------------------------------------------------- 
+## 7. Start analysing lof_tree ------------------------------------------------- 
 
 ## ...
 
 ## -------------------------------END-------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
