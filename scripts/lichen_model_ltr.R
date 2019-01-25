@@ -1,8 +1,10 @@
-## Describe the purpose of the script
+## model lichen richness in a hierarchical model with stem diameter and tree
+## species at the tree level and vegetation density and stand age at the plot
+## level. block is the grouping variable
 ## 
 ##
-## First edit: 
-## Last edit: 
+## First edit: 20190125
+## Last edit: 20190125
 ##
 ## Author: Julian Klein
 
@@ -10,22 +12,35 @@
 
 rm(list = ls())
 
-if(!require()){install.packages("")}
-require()
+library(boot)
+library(rjags)
+library(coda)
 
 ## 2. Define or source functions used in this script ---------------------------
 
-source()
+#source()
 
 ## 3. Load and explore data ----------------------------------------------------
 
-dir()
+dir("clean")
+
+ltr <- read.csv("clean/ltr_T_10.csv")
+head(ltr)
+str(ltr)
 
 ## 4. The model ----------------------------------------------------------------
 
-data <-  list(
-  
-) 
+data <- list(id = ltr$X,
+             block = as.numeric(ltr$block),
+             plot = as.numeric(ltr$plot),
+             richness = ltr$richness,
+             tree_sp_pine = ifelse(ltr$tree_sp == "Ps", 1, 0),
+             tree_sp_spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
+             stem_dbh = ltr$tree_dbh,
+             stand_dbh = ltr$average_dbh_all_alive,
+             canopy_density = ltr$PercentAbove5m,
+             understory_density = ltr$PercentBelow5m)
+
 data
 
 inits <-  list(
@@ -34,7 +49,7 @@ inits <-  list(
   ))
 
 
-model <- "name_of_JAGS_model_file.R"
+model <- "scripts/JAGS/lichen_ltr_JAGS.R"
 
 jm <- jags.model(model,
                  data = data,
