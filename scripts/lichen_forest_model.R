@@ -1,9 +1,9 @@
-## In this script l_obsen obs data used in the bird & l_obsen paper is modelled
-## with different forest variables. A maximum likelyhood and bayesian approach 
-## is used. Different responses are modelled from species to community level.
+## In this script lichen data is prepared and merged with forest data. 
+## The data is explored graphically and clean data sets used in the analysis are
+## exported.
 ##
 ## First edit: 20181207
-## Last edit: 20190122
+## Last edit: 20190125
 ##
 ## Author: Julian Klein
 
@@ -13,11 +13,8 @@ rm(list = ls())
 
 library(data.table)
 library(dplyr)
-library(boot)
 library(corrgram)
 library(ggplot2)
-# library(rjags)
-# library(coda)
 
 ## 2. Define or source functions used in this script ---------------------------
 
@@ -64,9 +61,6 @@ levels(l_obs$circle_10m) <- c("middle", "east", "west")
 
 ## Reduce trees of unknown species:
 l_obs <- l_obs[!is.na(l_obs$Tree.species),]
-
-## Exclude cut stumps and make seperate data set:
-l_obs_cut <- l_obs[is.na(l_obs$Tree.no), c(2:3, 8:9)]
 
 ## Reduce l_obs to only uncut trees:
 l_obs <- l_obs[!is.na(l_obs$Tree.no), c(2:7, 10:14, 17:112)]
@@ -172,7 +166,7 @@ levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
                            c("Ag", "Bp")] <- "Dc_trivial"
 levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in% 
                            c("Qr", "Pt")] <- "Dc_complex"
-levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in% 
+levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
                            c("Dc_complex", "Dc_trivial")] <- "Dc"
 
 lof_plot <- merge(lof_plot,
@@ -194,137 +188,45 @@ lof_plot$plot_dbh <- ifelse(lof_plot$average_dbh_all_alive > T1,
                             "wide plot dbh", 
                             "narrow plot dbh")
 
-## Factorise nr. of tree species:
+## Factorise nr. of tree species and bin 3 & 4 species:
 lof_plot$nr_tree_sp <- as.factor(lof_plot$nr_tree_sp)
+#levels(lof_plot$nr_tree_sp)[3:4] <- ">2"
 
-g1 <- ggplot(lof_plot, ## Don't forget to reduce data set for non lidar vars
-             aes(x = PercentBelow5m, 
-                 y = perc_obs, 
-                 fill = nr_tree_sp, 
-                 color = nr_tree_sp))
+g1 <- ggplot(lof_tree[lof_tree$buffer == 10 & 
+                        lof_tree$Stem.S.Branches.B.T.Total == "T", ], ## Don't forget to reduce data set for non-lidar vars
+             aes(x = PercentAbove5m, 
+                 y = richness, 
+                 fill = tree_sp, 
+                 color = tree_sp
+                 ))
 g2 <- geom_point()
 g3 <- stat_smooth(method = "lm", size = 2, formula = y ~ log(x))            
-g4 <- facet_grid(buffer ~ ., scales = "free") 
+g4 <- facet_grid(plot_dbh ~ ., scales = "free") 
 
 dir.create("figures")
 
-png("figures/richness_PB5.png", 2000, 1000, "px")
+png("figures/richness_PA5.png", 1200, 1200, "px")
 
-g1+g3+g4+theme_bw(20)
+g1+g3+g4+theme_bw(40)
 
 dev.off()
 
-## 7. Start analysing lof_tree ------------------------------------------------- 
+## 7. Export clean data sets used in the jags models here: --------------------- 
 
-## ...
+dir.create("clean")
+
+## Export:
+
+lof_tree[lof_tree$buffer == 10 & lof_tree$Stem.S.Branches.B.T.Total == "T",
+         c(11, 1, 8, 5:6, 9, 13, 14)] %>% write.csv(., "clean/ltr_T_10.csv")
+lof_tree[lof_tree$buffer == 50 & lof_tree$Stem.S.Branches.B.T.Total == "T",
+         c(11, 1, 8, 5:6, 9, 13, 14)] %>% write.csv(., "clean/ltr_T_50.csv")
+
+
+lof_tree[lof_tree$buffer == 10 & lof_tree$Stem.S.Branches.B.T.Total == "T",
+         c(1, 7, 5:6, 9, 13, 14)] %>% write.csv(., "clean/ltpo_T_10.csv")
+lof_tree[lof_tree$buffer == 50 & lof_tree$Stem.S.Branches.B.T.Total == "T",
+         c(1, 7, 5:6, 9, 13, 14)] %>% write.csv(., "clean/ltpo_T_50.csv")
+
 
 ## -------------------------------END-------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Old:
-
-## Exclude thallus length measurments and make seperate data set:
-
-l_obs_thallus <- melt(l_obs,
-                      id.vars = colnames(l_obs)[1:11],
-                      measure.vars = colnames(l_obs)[c(18, 101)],
-                      value.name = "thallus_length",
-                      variable.name = "species")
-
-## Replace NA with 0 in species list to get thallus length 0:
-l_obs_thallus$thallus_length[is.na(l_obs_thallus$thallus_length)] <- 0
-
-## Merge l_obs_thallus with forest data:
-ltf <- merge(l_obs_thallus, 
-             f_subplot[, c(1:3, 6:8, 11)], 
-             all.x = TRUE, 
-             by = c("plot", "circle_10m")) 
-
-## Calculate cumultative lichen diversity per plot for different combinations of
-## tree species to look at relative contribution od tree species:
-
-## Only for total per tree observed:
-lof_pp <- lof[lof$Stem.S.Branches.B.T.Total == "T" & lof$observed == 1, 
-              -which(colnames(lof) %in% c("perc_obs", "richness"))] 
-
-## Add conifer and all as tree species names:
-
-T_conif <- lof_pp[lof$Tree.species %in% c("Pa", "Ps"), ]
-T_conif$Tree.species <- "conifer"
-
-T_all <- lof_pp
-T_all$Tree.species <- "all"
-
-## Calculate richness, nr. of trees and mean dbh per plot for each tree group:
-
-lof_pp <- as.data.table(lof_pp)
-lof_pp[, c("nr_trees", "average_dbh", "richness") := 
-         list(length(unique(Tree.no)), 
-              mean(unique(.SD[, c("Tree.no", 
-                                  "Tree.diameter.130.cm.above.ground")])
-                   $Tree.diameter.130.cm.above.ground, 
-                   na.rm = TRUE),
-              length(unique(species))),
-       by = c("plot", "Tree.species")]
-
-T_conif <- as.data.table(T_conif)
-T_conif[, c("nr_trees", "average_dbh", "richness") := 
-          list(length(unique(Tree.no)), 
-               mean(unique(.SD[, c("Tree.no", 
-                                   "Tree.diameter.130.cm.above.ground")])
-                    $Tree.diameter.130.cm.above.ground, 
-                    na.rm = TRUE),
-               length(unique(species))),
-        by = "plot"]
-
-T_all <- as.data.table(T_all)
-T_all[, c("nr_trees", "average_dbh", "richness") := 
-        list(length(unique(Tree.no)), 
-             mean(unique(.SD[, c("Tree.no", 
-                                 "Tree.diameter.130.cm.above.ground")])
-                  $Tree.diameter.130.cm.above.ground, 
-                  na.rm = TRUE),
-             length(unique(species))),
-      by = "plot"]
-
-
-lof_pp <- rbind(lof_pp, T_conif, T_all)
-
-## Chose desired columns:
-lof_pp <- unique(lof_pp[, c(1:2, 15, 17:32)])
