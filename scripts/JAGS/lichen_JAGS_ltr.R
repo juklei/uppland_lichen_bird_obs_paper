@@ -6,43 +6,53 @@
 ## Author: Julian Klein
 
 model{
+  
+  ## Likelihood:
+  
+  ## Tree level:
+  for(i in id){
+  
+    richness[i] ~ dpois(lambda[i])
+    log(lambda[i]) <- alpha_plot[plot[i]] + 
+                      beta_pine[i]*tree_sp_pine + 
+                      beta_spruce[i]*tree_sp_spruce + 
+                      beta_stem_dbh[i]*stem_dbh
+    
+  }
+  
+  ## Plot level:
+  for(j in 1:nplot){
+  
+    alpha_plot[j] ~ dgamma(mu[j]^2/sigma_plot^2, mu[j]/sigma_plot^2)
+    log(mu[j]) <- alpha_plot_mean + block_effect[block[j]] +
+                  beta_stand_dbh[j]*stand_dbh +
+                  beta_cdens[j]*canopy_density +
+                  beta_udens[j]*understory_density
+  
+  } 
 
-## likelihood
+  ## Block level:
+  for (k in 1:nblock){
   
-## Tree level:
-for(i in id){
+    block_effect[k] ~ dnorm(0, sigma_block)
   
-  richness[i] ~ dpois(lambda[i])
-  log(lambda[i]) <- alpha_plot[plot[i]] + 
-                    beta_pine[i]*tree_sp_pine + 
-                    beta_spruce[i]*tree_sp_spruce + 
-                    beta_stem_dbh[i]*stem_dbh
+  }
   
-}
+  ## Priors:
+  
+  beta_pine ~ dnorm(0, 0.001)
+  beta_spruce ~ dnorm(0, 0.001)
+  beta_stem_dbh ~ dnorm(0, 0.001)
+  
+  sigma_plot ~ dgamma(0.001, 0.001)
+  alpha_plot_mean ~ dgamma(0.001, 0.001)
+  beta_stand_dbh ~ dnorm(0, 0.001)
+  beta_cdens ~ dnorm(0, 0.001)
+  beta_udens ~ dnorm(0, 0.001)
+  
+  sigma_block ~ dgamma(0.001, 0.001)
 
-## Plot level:
-for(j in unique(plot)){
-  
-  alpha_plot[j] ~ dgamma(a_plot[j], b_plot[j])
-  mu[j] <- alpha_plot_mean + block_effect[block[j]] +
-           beta_stand_dbh[j]*stand_dbh +
-           beta_cdens[j]*canopy_density +
-           beta_udens[j]*understory_density
-  
-} 
-
-## Block level:
-for (k in 1:unique(block)){
-  
-  site.eff[k] ~ dnorm(0, tau_block)
-  
-}
-  
-#priors
-
-
-
-#predictions
+  ## Predictions:
 
 }
 

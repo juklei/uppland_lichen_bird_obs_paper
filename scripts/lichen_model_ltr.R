@@ -32,24 +32,35 @@ str(ltr)
 
 data <- list(id = ltr$X,
              block = as.numeric(ltr$block),
+             nblock = max(ltr$block),
              plot = as.numeric(ltr$plot),
+             nplot = max(ltr$plot),
              richness = ltr$richness,
              tree_sp_pine = ifelse(ltr$tree_sp == "Ps", 1, 0),
              tree_sp_spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
-             stem_dbh = ltr$tree_dbh,
-             stand_dbh = ltr$average_dbh_all_alive,
-             canopy_density = ltr$PercentAbove5m,
-             understory_density = ltr$PercentBelow5m)
+             stem_dbh = scale(ltr$tree_dbh),
+             stand_dbh = scale(ltr$average_dbh_all_alive),
+             canopy_density = scale(ltr$PercentAbove5m),
+             understory_density = scale(ltr$PercentBelow5m))
 
 data
 
 inits <-  list(
-  list(
-    
+  list(beta_pine = 0,
+       beta_spruce = 0,
+       beta_stem_dbh = 0.5,
+       alpha_plot = rep(8, data$nplot),
+       sigma_plot = 2,
+       alpha_plot_mean = 8,
+       beta_stand_dbh = 0.2,
+       beta_cdens = -0.2,
+       beta_udens = -0.2,
+       block_effect = rep(1, data$nblock),
+       sigma_block = 2
   ))
 
 
-model <- "scripts/JAGS/lichen_ltr_JAGS.R"
+model <- "scripts/JAGS/lichen_JAGS_ltr.R"
 
 jm <- jags.model(model,
                  data = data,
@@ -67,7 +78,16 @@ samples <- 10000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c("a", "b", "alpha.mu"), 
+                   variable.names = c("beta_pine",
+                                      "beta_spruce",
+                                      "beta_stem_dbh",
+                                      "alpha_plot",
+                                      "alpha_plot_mean",
+                                      "beta_stand_dbh",
+                                      "beta_cdens",
+                                      "beta_udens",
+                                      "block_effect",
+                                      "sigma_block"), 
                    n.iter = samples, 
                    thin = n.thin)
 
