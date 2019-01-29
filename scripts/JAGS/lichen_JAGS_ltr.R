@@ -10,13 +10,13 @@ model{
   ## Likelihood:
   
   ## Tree level:
-  for(i in id){
+  for(i in 1:nobs){
   
     richness[i] ~ dpois(lambda[i])
     log(lambda[i]) <- alpha_plot[plot[i]] + 
                       beta_pine*tree_sp_pine[i] + 
                       beta_spruce*tree_sp_spruce[i] + 
-                      beta_stem_dbh*stem_dbh[i]
+                      beta_stem_dbh*stem_dbh[i, 1]
     
   }
   
@@ -25,9 +25,9 @@ model{
   
     alpha_plot[j] ~ dgamma(mu[j]^2/sigma_plot^2, mu[j]/sigma_plot^2)
     log(mu[j]) <- alpha_plot_mean + block_effect[block[j]] +
-                  beta_stand_dbh*stand_dbh[j] +
-                  beta_cdens*canopy_density[j] +
-                  beta_udens*understory_density[j]
+                  beta_stand_dbh*stand_dbh[j, 1] +
+                  beta_cdens*canopy_density[j, 1] +
+                  beta_udens*understory_density[j, 1]
   
   } 
 

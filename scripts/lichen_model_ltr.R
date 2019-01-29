@@ -24,7 +24,7 @@ library(coda)
 
 dir("clean")
 
-ltr <- read.csv("clean/ltr_T_10.csv")
+ltr <- na.omit(read.csv("clean/ltr_T_10.csv"))
 head(ltr)
 str(ltr)
 
@@ -37,7 +37,7 @@ plu <- unique(ltr[, c("plot",
                       "PercentBelow5m")])
 nrow(plu)
 
-data <- list(id = ltr$X,
+data <- list(nobs = nrow(ltr),
              block = as.numeric(ltr$block),
              nblock = length(unique(ltr$block)),
              plot = as.numeric(ltr$plot),
