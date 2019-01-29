@@ -30,6 +30,13 @@ str(ltr)
 
 ## 4. The model ----------------------------------------------------------------
 
+## Plot level explanatory variables need to be reduced to unique rows:
+plu <- unique(ltr[, c("plot", 
+                      "average_dbh_all_alive", 
+                      "PercentAbove5m", 
+                      "PercentBelow5m")])
+nrow(plu)
+
 data <- list(id = ltr$X,
              block = as.numeric(ltr$block),
              nblock = length(unique(ltr$block)),
@@ -39,14 +46,11 @@ data <- list(id = ltr$X,
              tree_sp_pine = ifelse(ltr$tree_sp == "Ps", 1, 0),
              tree_sp_spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
              stem_dbh = scale(ltr$tree_dbh),
-             stand_dbh = scale(unique(
-               ltr[, c("plot", "average_dbh_all_alive")])[2]),
-             canopy_density = scale(unique(
-               ltr[, c("plot", "PercentAbove5m")])[2]),
-             understory_density = scale(unique(
-               ltr[, c("plot", "PercentBelow5m")])[2]))
+             stand_dbh = scale(plu$average_dbh_all_alive),
+             canopy_density = scale(plu$PercentAbove5m),
+             understory_density = scale(plu$PercentBelow5m))
 
-data
+str(data)
 
 inits <-  list(
   list(beta_pine = 0,
