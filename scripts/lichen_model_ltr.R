@@ -39,9 +39,12 @@ data <- list(id = ltr$X,
              tree_sp_pine = ifelse(ltr$tree_sp == "Ps", 1, 0),
              tree_sp_spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
              stem_dbh = scale(ltr$tree_dbh),
-             stand_dbh = scale(ltr$average_dbh_all_alive),
-             canopy_density = scale(ltr$PercentAbove5m),
-             understory_density = scale(ltr$PercentBelow5m))
+             stand_dbh = scale(unique(
+               ltr[, c("plot", "average_dbh_all_alive")])[2]),
+             canopy_density = scale(unique(
+               ltr[, c("plot", "PercentAbove5m")])[2]),
+             understory_density = scale(unique(
+               ltr[, c("plot", "PercentBelow5m")])[2]))
 
 data
 
