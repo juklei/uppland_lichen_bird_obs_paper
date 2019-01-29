@@ -54,6 +54,11 @@ model{
   tau_block <- 1/sigma_block^2
 
   ## Predictions:
-
+  for(m in 1:length(ud_pred)){
+    
+    log(out[m]) <- alpha_plot_mean + beta_udens*ud_pred[m]
+    
+  }
+  
 }
 
