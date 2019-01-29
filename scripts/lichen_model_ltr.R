@@ -32,9 +32,9 @@ str(ltr)
 
 data <- list(id = ltr$X,
              block = as.numeric(ltr$block),
-             nblock = max(ltr$block),
+             nblock = length(unique(ltr$block)),
              plot = as.numeric(ltr$plot),
-             nplot = max(ltr$plot),
+             nplot = length(unique(ltr$plot)),
              richness = ltr$richness,
              tree_sp_pine = ifelse(ltr$tree_sp == "Ps", 1, 0),
              tree_sp_spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
