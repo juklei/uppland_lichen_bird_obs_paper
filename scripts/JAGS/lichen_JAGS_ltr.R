@@ -34,7 +34,7 @@ model{
   ## Block level:
   for (k in 1:nblock){
   
-    block_effect[k] ~ dnorm(0, sigma_block)
+    block_effect[k] ~ dnorm(0, tau_block)
   
   }
   
@@ -51,6 +51,7 @@ model{
   beta_udens ~ dnorm(0, 0.001)
   
   sigma_block ~ dgamma(0.001, 0.001)
+  tau_block <- 1/sigma_block^2
 
   ## Predictions:
 
