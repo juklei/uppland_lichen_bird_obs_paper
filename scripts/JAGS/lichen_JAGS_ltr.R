@@ -23,42 +23,48 @@ model{
   ## Plot level:
   for(j in 1:nplot){
   
-    alpha_plot[j] ~ dgamma(mu[j]^2/sigma_plot^2, mu[j]/sigma_plot^2)
-    log(mu[j]) <- alpha_plot_mean + block_effect[block[j]] +
-                  beta_stand_dbh*stand_dbh[j, 1] +
-                  beta_cdens*canopy_density[j, 1] +
-                  beta_udens*understory_density[j, 1]
+    alpha_plot[j] ~ dnorm(mu[j], tau_plot)
+    mu[j] <- mu2 +
+             beta_stand_dbh*stand_dbh[j, 1] +
+             beta_cdens*canopy_density[j, 1] +
+             beta_udens*understory_density[j, 1]
   
   } 
 
   ## Block level:
-  for (k in 1:nblock){
-  
-    block_effect[k] ~ dnorm(0, tau_block)
-  
-  }
+  # for (k in 1:nblock){
+  # 
+  #   alpha_plot_mean[k] ~ dnorm(mu2, tau_block)
+  # 
+  # }
   
   ## Priors:
   
-  beta_pine ~ dnorm(0, 0.001)
-  beta_spruce ~ dnorm(0, 0.001)
-  beta_stem_dbh ~ dnorm(0, 0.001)
+  beta_pine ~ dnorm(0, 0.01)
+  beta_spruce ~ dnorm(0, 0.01)
+  beta_stem_dbh ~ dnorm(0.25, 0.01)
   
-  sigma_plot ~ dgamma(0.001, 0.001)
-  alpha_plot_mean ~ dgamma(0.001, 0.001)
-  beta_stand_dbh ~ dnorm(0, 0.001)
-  beta_cdens ~ dnorm(0, 0.001)
-  beta_udens ~ dnorm(0, 0.001)
+  sigma_plot ~ dunif(0, 5)
+  tau_plot <- 1/sigma_plot^2
+  mu2 ~ dnorm(2, 0.04)
+  beta_stand_dbh ~ dnorm(0.25, 0.01)
+  beta_cdens ~ dnorm(0, 0.01)
+  beta_udens ~ dnorm(0, 0.01)
   
-  sigma_block ~ dgamma(0.001, 0.001)
+  sigma_block ~ dunif(0, 5)
   tau_block <- 1/sigma_block^2
 
   ## Predictions:
   for(m in 1:length(ud_pred)){
     
-    log(out[m]) <- alpha_plot_mean + beta_udens*ud_pred[m]
+    log(out_d[m]) <- mu2 + beta_udens*ud_pred[m]
+    log(out_p[m]) <- mu2 + beta_udens*ud_pred[m] + beta_pine
+    log(out_s[m]) <- mu2 + beta_udens*ud_pred[m] + beta_spruce
+    mean_out[m]<-(out_d[m]+out_p[m]+out_s[m])/3
     
   }
-  
+ 
+
+   
 }
 

@@ -48,8 +48,8 @@ data <- list(nobs = nrow(ltr),
              tree_sp_spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
              stem_dbh = scale(ltr$tree_dbh),
              stand_dbh = scale(plu$average_dbh_all_alive),
-             canopy_density = scale(log(plu$PercentAbove5m)),
-             understory_density = scale(log(plu$PercentBelow5m)))
+             canopy_density = scale(plu$PercentAbove5m),
+             understory_density = scale(plu$PercentBelow5m))
 
 ## Add prediction data:
 data$ud_pred <- seq(min(data$understory_density),
@@ -59,16 +59,16 @@ data$ud_pred <- seq(min(data$understory_density),
 str(data)
 
 inits <-  list(
-  list(beta_pine = 0,
-       beta_spruce = 0,
+  list(beta_pine = 0.5,
+       beta_spruce = 0.5,
        beta_stem_dbh = 0.5,
-       alpha_plot = rep(8, data$nplot),
+       alpha_plot = rep(2, data$nplot),
        sigma_plot = 2,
-       alpha_plot_mean = 8,
+       alpha_plot_mean = rep(1, data$nblock),
        beta_stand_dbh = 0.2,
        beta_cdens = -0.2,
        beta_udens = -0.2,
-       block_effect = rep(1, data$nblock),
+       mu2 = 1,
        sigma_block = 2
   ))
 
@@ -87,20 +87,20 @@ burn.in <-  10000
 update(jm, n.iter = burn.in) 
 
 
-samples <- 10000
+samples <- 20000
 n.thin <- 5
 
 zc <- coda.samples(jm,
                    variable.names = c("beta_pine",
                                       "beta_spruce",
                                       "beta_stem_dbh",
-                                      #"alpha_plot",
+                                      "alpha_plot",
                                       "sigma_plot",
                                       "alpha_plot_mean",
                                       "beta_stand_dbh",
                                       "beta_cdens",
                                       "beta_udens",
-                                      #"block_effect",
+                                      "mu2",
                                       "sigma_block"), 
                    n.iter = samples, 
                    thin = n.thin)
@@ -109,7 +109,7 @@ summary(zc)
 plot(zc) 
 
 zj <- jags.samples(jm, 
-                   variable.names = c("out"), 
+                   variable.names = c("out_d", "out_p", "out_s", "mean_out"), 
                    n.iter = samples, 
                    thin = n.thin)
 
@@ -122,18 +122,20 @@ gelman.diag(zc) #needs at least 2 chains
 
 
 #useful functions
-ecdf(zj$out)(0)
+ecdf(zj$mean_out)(0)
 HPDinterval(zc, prob=0.95)
-pred <-summary(zj$out, quantile, c(.025,.5,.975))$stat
+pred <-summary(zj$mean_out, quantile, c(.025,.5,.975))$stat
 
 coda.matrix <- as.matrix(zc[[1]])
 head(coda.matrix)
 
+dev.off()
+
 #plotting prediction & 95%CIs using polygon
-pred<-summary(zj$out, quantile, c(.025,.5,.975))$stat
-x=exp(data$ud_pred)+mean(plu$PercentBelow5m)
+pred<-summary(zj$mean_out, quantile, c(.025,.5,.975))$stat
+x=data$ud_pred+mean(plu$PercentBelow5m)
 y=pred
-plot(x,y[2,], col="blue", xlab="XX", ylab="YY", cex=1.4, typ="l", tck=0.03, bty="l") 
+plot(x,y[2,], col="blue", xlab="XX", ylab="YY", cex=1.4, typ="l", tck=0.03, bty="l", ylim = c(5, 15)) 
 polygon(c(x,rev(x)), c(y[1,], rev(y[3,])), density=19, col="blue", angle=45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
