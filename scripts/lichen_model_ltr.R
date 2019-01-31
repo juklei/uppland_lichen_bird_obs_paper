@@ -4,9 +4,9 @@
 ## 
 ##
 ## First edit: 20190125
-## Last edit: 20190125
+## Last edit: 20190131
 ##
-## Author: Julian Klein
+## Author: Julian Klein, Matt Low
 
 ## 1. Clear environment and load libraries -------------------------------------
 
@@ -15,10 +15,13 @@ rm(list = ls())
 library(boot)
 library(rjags)
 library(coda)
+library(magrittr)
 
 ## 2. Define or source functions used in this script ---------------------------
 
-#source()
+dir.create("results")
+dir.create("results/ltr")
+dir.create("figures")
 
 ## 3. Load and explore data ----------------------------------------------------
 
@@ -39,8 +42,8 @@ nrow(plu)
 
 ## Create model data set:
 data <- list(nobs = nrow(ltr),
-             block = as.numeric(ltr$block),
-             nblock = length(unique(ltr$block)),
+             # block = as.numeric(ltr$block),
+             # nblock = length(unique(ltr$block)),
              plot = as.numeric(ltr$plot),
              nplot = length(unique(ltr$plot)),
              richness = ltr$richness,
@@ -58,20 +61,17 @@ data$ud_pred <- seq(min(data$understory_density),
 
 str(data)
 
-inits <-  list(
-  list(beta_pine = 0.5,
-       beta_spruce = 0.5,
-       beta_stem_dbh = 0.5,
-       alpha_plot = rep(2, data$nplot),
-       sigma_plot = 2,
-       alpha_plot_mean = rep(1, data$nblock),
-       beta_stand_dbh = 0.2,
-       beta_cdens = -0.2,
-       beta_udens = -0.2,
-       mu2 = 1,
-       sigma_block = 2
-  ))
-
+inits <-  list(list(p = 0.8,
+                    richness_true = rep(12, data$nobs),
+                    beta_pine = 0.5,
+                    beta_spruce = 0.5,
+                    beta_stem_dbh = 0.5,
+                    alpha_plot = rep(2, data$nplot),
+                    sigma_plot = 2,
+                    alpha_plot_mean = 1,
+                    beta_stand_dbh = 0.2,
+                    beta_cdens = -0.2,
+                    beta_udens = -0.2))
 
 model <- "scripts/JAGS/lichen_JAGS_ltr.R"
 
@@ -81,17 +81,16 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-
 burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
-
-samples <- 20000
-n.thin <- 5
+samples <- 1000
+n.thin <- 1
 
 zc <- coda.samples(jm,
-                   variable.names = c("beta_pine",
+                   variable.names = c("p",
+                                      "beta_pine",
                                       "beta_spruce",
                                       "beta_stem_dbh",
                                       "alpha_plot",
@@ -99,46 +98,58 @@ zc <- coda.samples(jm,
                                       "alpha_plot_mean",
                                       "beta_stand_dbh",
                                       "beta_cdens",
-                                      "beta_udens",
-                                      "mu2",
-                                      "sigma_block"), 
+                                      "beta_udens"), 
                    n.iter = samples, 
                    thin = n.thin)
 
-summary(zc)
+
+capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
+  write(., "results/ltr/parameters.txt")
+
 plot(zc) 
 
+## Diagnostics:
+
+capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
+  write(., "results/ltr/diagnostics.txt")
+
+gelman.diag(zc)
+
+## Useful functions:
+# ecdf(zj$mean_out)(0)
+# coda.matrix <- as.matrix(zc[[1]])
+# head(coda.matrix)
+
+## 5. Produce and export figures -----------------------------------------------
+
+dev.off()
+
+## Produce predictions:
 zj <- jags.samples(jm, 
                    variable.names = c("out_d", "out_p", "out_s", "mean_out"), 
                    n.iter = samples, 
                    thin = n.thin)
 
+## Plotting prediction & 95% CIs using polygon:
 
+png("figures/plot_richness_ud.png", 1500, 1200, "px", res = 200)
 
-#diagnostics
-raftery.diag(zc)
-heidel.diag(zc)
-gelman.diag(zc) #needs at least 2 chains
-
-
-#useful functions
-ecdf(zj$mean_out)(0)
-HPDinterval(zc, prob=0.95)
-pred <-summary(zj$mean_out, quantile, c(.025,.5,.975))$stat
-
-coda.matrix <- as.matrix(zc[[1]])
-head(coda.matrix)
-
-dev.off()
-
-#plotting prediction & 95%CIs using polygon
-pred<-summary(zj$mean_out, quantile, c(.025,.5,.975))$stat
-x=data$ud_pred+mean(plu$PercentBelow5m)
-y=pred
-plot(x,y[2,], col="blue", xlab="XX", ylab="YY", cex=1.4, typ="l", tck=0.03, bty="l", ylim = c(5, 15)) 
-polygon(c(x,rev(x)), c(y[1,], rev(y[3,])), density=19, col="blue", angle=45)
+pred <- summary(zj$mean_out, quantile, c(.025,.5,.975))$stat
+x = data$ud_pred + mean(plu$PercentBelow5m)
+y = pred
+plot(x, y[2,], 
+     col="blue", 
+     xlab="Understorey density", 
+     ylab="Richness per plot", 
+     cex = 1.4, 
+     typ = "l", 
+     tck = 0.03, 
+     bty = "l", 
+     ylim = c(5, 15)) 
+polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
 
+dev.off()
 
 ## -------------------------------END-------------------------------------------
