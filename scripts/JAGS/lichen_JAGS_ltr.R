@@ -72,16 +72,18 @@ model{
   p_cv <- step(cv_richness - cv_richness_sim)
   
   ## Model fit:
-  # for(m in 1:nobs){
-  #   
-  #   sq[m] <- (richness[m] - lambda)^2
-  #   sq_sim[m] <- (richness_sim[m] - lambda)^2
-  #   
-  # }
-  # 
-  # fit <- sum(sq[])
-  # fit_sim <- sum(sq_sim[])
-  # p_fit <- step(fit_sim - fit)
+  for(m in 1:nobs){
+
+    sq[m] <- (richness[m] - lambda[m])^2
+    sq_sim[m] <- (richness_sim[m] - lambda[m])^2
+
+  }
+  
+  fit <- sum(sq[])
+  fit_sim <- sum(sq_sim[])
+  p_fit <- step(fit_sim - fit)
+  
+  R2 <- 1 - (mean(fit_sim)/fit)
   
   ## Predictions:
   for(n in 1:length(ud_pred)){

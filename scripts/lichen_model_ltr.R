@@ -102,14 +102,14 @@ zc <- coda.samples(jm,
                    n.iter = samples, 
                    thin = n.thin)
 
-## 5. Validate the model and export validation data and figures ----------------
 
+## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
   write(., "results/ltr/parameters.txt")
 
-plot(zc) 
+## 5. Validate the model and export validation data and figures ----------------
 
-## Diagnostics:
+plot(zc) 
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
   write(., "results/ltr/diagnostics.txt")
@@ -131,19 +131,44 @@ zj_val <- jags.samples(jm,
                                           "p_cv", 
                                           "fit", 
                                           "fit_sim",
-                                          "p_fit"), 
+                                          "p_fit",
+                                          "R2"), 
                        n.iter = samples, 
                        thin = n.thin)
 
+## Fit of mean:
 plot(zj_val$mean_richness, 
      zj_val$mean_richness_sim, 
-     xlab="mean real", 
-     ylab="mean simulated", 
-     cex=.05)
-abline(0,1)
+     xlab = "mean real", 
+     ylab = "mean simulated", 
+     cex = .05)
+abline(0, 1)
 p <- summary(zj_val$p_mean, mean)
 text(x = 7, y = 10.8, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
+## Fit of variance:
+plot(zj_val$cv_richness, 
+     zj_val$cv_richness_sim, 
+     xlab = "cv real", 
+     ylab = "cv simulated", 
+     cex = .05)
+abline(0,1)
+p <- summary(zj_val$p_cv, mean)
+text(x = .25, y = .4, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+
+## Overall fit:
+plot(zj_val$fit, 
+     zj_val$fit_sim, 
+     xlab = "ssq real", 
+     ylab = "ssq simulated", 
+     cex = .05,
+     xlim = c(5000, 15000),
+     ylim = c(5000, 15000))
+abline(0,1)
+p <- summary(zj_val$p_fit, mean)
+text(x = 8000, y = 10000, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+
+R2 <- summary(zj_val$p_cv, mean)
 
 ## 6. Produce and export figures -----------------------------------------------
 
