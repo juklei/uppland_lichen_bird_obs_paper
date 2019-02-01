@@ -61,8 +61,8 @@ data$ud_pred <- seq(min(data$understory_density),
 
 str(data)
 
-inits <-  list(list(#p = 0.8,
-                    #richness_true = rep(12, data$nobs),
+inits <-  list(list(p = 0.8,
+                    richness_true = rep(10, data$nobs),
                     beta_pine = 0.5,
                     beta_spruce = 0.5,
                     beta_stem_dbh = 0.5,
@@ -85,11 +85,12 @@ burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 10000
+samples <- 20000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c(#"p",
+                   variable.names = c("p",
+                                      #"richness_true",
                                       "beta_pine",
                                       "beta_spruce",
                                       "beta_stem_dbh",
@@ -154,19 +155,17 @@ plot(zj_val$cv_richness,
      cex = .05)
 abline(0,1)
 p <- summary(zj_val$p_cv, mean)
-text(x = .25, y = .4, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = .25, y = .35, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## Overall fit:
 plot(zj_val$fit, 
      zj_val$fit_sim, 
      xlab = "ssq real", 
      ylab = "ssq simulated", 
-     cex = .05,
-     xlim = c(5000, 15000),
-     ylim = c(5000, 15000))
+     cex = .05)
 abline(0,1)
 p <- summary(zj_val$p_fit, mean)
-text(x = 8000, y = 10000, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = 1000, y = 3000, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 R2 <- summary(zj_val$p_cv, mean)
 
