@@ -1,7 +1,7 @@
 ## lichen ltr model
 ##
 ## First edit: 20190129
-## Last edit: 20190131
+## Last edit: 20190201
 ##
 ## Author: Julian Klein, Matt Low
 
@@ -13,12 +13,9 @@ model{
   for(i in 1:nobs){
   
     richness[i] ~ dbin(p, richness_true[i])
-    
     richness_sim[i] ~ dbin(p, richness_true[i])
     
     richness_true[i] ~ dpois(lambda[i])
-    # richness[i] ~ dpois(lambda[i])
-    # richness_sim[i] ~ dpois(lambda[i])
     log(lambda[i]) <- alpha_plot[plot[i]] + 
                       beta_pine*tree_sp_pine[i] + 
                       beta_spruce*tree_sp_spruce[i] + 
