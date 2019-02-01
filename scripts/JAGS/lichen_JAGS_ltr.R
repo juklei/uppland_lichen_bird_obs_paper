@@ -12,9 +12,11 @@ model{
   ## Tree level:
   for(i in 1:nobs){
   
-    richness[i] ~ dbin(p, richness_true[i])
-    
-    richness_true[i] ~ dpois(lambda[i])
+    # richness[i] ~ dbin(p, richness_true[i])
+    # 
+    # richness_true[i] ~ dpois(lambda[i])
+    richness[i] ~ dpois(lambda[i])
+    richness_sim[i] ~ dpois(lambda[i])
     log(lambda[i]) <- alpha_plot[plot[i]] + 
                       beta_pine*tree_sp_pine[i] + 
                       beta_spruce*tree_sp_spruce[i] + 
@@ -41,7 +43,7 @@ model{
   # }
   
   ## Priors:
-  p ~ dnorm(0.8, 16)
+  # p ~ dnorm(0.8, 16)
   beta_pine ~ dnorm(0, 0.01)
   beta_spruce ~ dnorm(0, 0.01)
   beta_stem_dbh ~ dnorm(0.25, 0.01)
@@ -57,13 +59,37 @@ model{
   # sigma_block ~ dunif(0, 5)
   # tau_block <- 1/sigma_block^2
 
+  ## Model validation:
+  
+  ## Bayesian p-value:
+  mean_richness <- mean(richness[])
+  mean_richness_sim <- mean(richness_sim[])
+  p_mean <-step(mean_richness_sim - mean_richness)
+  
+  ## Coefficient of variation:
+  cv_richness <- sd(richness[])/mean_richness
+  cv_richness_sim <- sd(richness_sim[])/mean_richness_sim
+  p_cv <- step(cv_richness - cv_richness_sim)
+  
+  ## Model fit:
+  # for(m in 1:nobs){
+  #   
+  #   sq[m] <- (richness[m] - lambda)^2
+  #   sq_sim[m] <- (richness_sim[m] - lambda)^2
+  #   
+  # }
+  # 
+  # fit <- sum(sq[])
+  # fit_sim <- sum(sq_sim[])
+  # p_fit <- step(fit_sim - fit)
+  
   ## Predictions:
-  for(m in 1:length(ud_pred)){
+  for(n in 1:length(ud_pred)){
     
-    log(out_d[m]) <- alpha_plot_mean + beta_udens*ud_pred[m]
-    log(out_p[m]) <- alpha_plot_mean + beta_udens*ud_pred[m] + beta_pine
-    log(out_s[m]) <- alpha_plot_mean + beta_udens*ud_pred[m] + beta_spruce
-    mean_out[m] <- (out_d[m] + out_p[m] + out_s[m])/3
+    log(out_d[n]) <- alpha_plot_mean + beta_udens*ud_pred[n]
+    log(out_p[n]) <- alpha_plot_mean + beta_udens*ud_pred[n] + beta_pine
+    log(out_s[n]) <- alpha_plot_mean + beta_udens*ud_pred[n] + beta_spruce
+    mean_out[n] <- (out_d[n] + out_p[n] + out_s[n])/3
     
   }
    

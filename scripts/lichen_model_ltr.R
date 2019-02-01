@@ -61,8 +61,8 @@ data$ud_pred <- seq(min(data$understory_density),
 
 str(data)
 
-inits <-  list(list(p = 0.8,
-                    richness_true = rep(12, data$nobs),
+inits <-  list(list(#p = 0.8,
+                    #richness_true = rep(12, data$nobs),
                     beta_pine = 0.5,
                     beta_spruce = 0.5,
                     beta_stem_dbh = 0.5,
@@ -85,11 +85,11 @@ burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 1000
-n.thin <- 1
+samples <- 10000
+n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c("p",
+                   variable.names = c(#"p",
                                       "beta_pine",
                                       "beta_spruce",
                                       "beta_stem_dbh",
@@ -102,6 +102,7 @@ zc <- coda.samples(jm,
                    n.iter = samples, 
                    thin = n.thin)
 
+## 5. Validate the model and export validation data and figures ----------------
 
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
   write(., "results/ltr/parameters.txt")
@@ -120,21 +121,48 @@ gelman.diag(zc)
 # coda.matrix <- as.matrix(zc[[1]])
 # head(coda.matrix)
 
-## 5. Produce and export figures -----------------------------------------------
+## Produce validation metrics: 
+zj_val <- jags.samples(jm, 
+                       variable.names = c("mean_richness", 
+                                          "mean_richness_sim",
+                                          "p_mean", 
+                                          "cv_richness", 
+                                          "cv_richness_sim", 
+                                          "p_cv", 
+                                          "fit", 
+                                          "fit_sim",
+                                          "p_fit"), 
+                       n.iter = samples, 
+                       thin = n.thin)
+
+plot(zj_val$mean_richness, 
+     zj_val$mean_richness_sim, 
+     xlab="mean real", 
+     ylab="mean simulated", 
+     cex=.05)
+abline(0,1)
+p <- summary(zj_val$p_mean, mean)
+text(x = 7, y = 10.8, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+
+
+## 6. Produce and export figures -----------------------------------------------
 
 dev.off()
 
 ## Produce predictions:
-zj <- jags.samples(jm, 
-                   variable.names = c("out_d", "out_p", "out_s", "mean_out"), 
-                   n.iter = samples, 
-                   thin = n.thin)
+zj_pred <- jags.samples(jm, 
+                        variable.names = c("out_d", 
+                                           "out_p", 
+                                           "out_s", 
+                                           "mean_out"),
+                        n.iter = samples, 
+                        thin = n.thin)
 
 ## Plotting prediction & 95% CIs using polygon:
 
 png("figures/plot_richness_ud.png", 1500, 1200, "px", res = 200)
 
-pred <- summary(zj$mean_out, quantile, c(.025,.5,.975))$stat
+pred <- summary(zj_pred$mean_out, quantile, c(.025,.5,.975))$stat
 x = data$ud_pred + mean(plu$PercentBelow5m)
 y = pred
 plot(x, y[2,], 
