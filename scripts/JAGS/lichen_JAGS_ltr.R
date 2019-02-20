@@ -22,7 +22,7 @@ model{
     b[i] <- (mu_p[i] - 2*mu_p[i]^2 + mu_p[i]^3 - sigma_p^2 + mu_p[i]*sigma_p^2)/
             sigma_p^2
     
-    richness_true[i] ~ dpois(lambda[i]) T(0, 30)
+    richness_true[i] ~ dpois(lambda[i]) T(1, 40)
     log(lambda[i]) <- alpha_plot[plot[i]] + 
                       beta_pine*tree_sp_pine[i] + 
                       beta_spruce*tree_sp_spruce[i] + 
@@ -50,8 +50,8 @@ model{
   
   ## Priors:
   #p ~ dbeta(5, .7)
-  alpha_p ~ dnorm(0, 0.001)
-  beta_p ~ dnorm(0, 0.001)
+  alpha_p ~ dnorm(-0.05, 0.01)
+  beta_p ~ dnorm(-0.05, 0.01)
   sigma_p ~ dunif(0, 50)
   
   beta_pine ~ dnorm(0, 0.01)

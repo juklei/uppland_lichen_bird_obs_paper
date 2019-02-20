@@ -87,23 +87,23 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  10000
+burn.in <-  1000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 10000
+samples <- 20000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c("p",
+                   variable.names = c(#"p",
                                       "alpha_p",
                                       "beta_p",
                                       "sigma_p",
-                                      "richness_true",
+                                      #"richness_true",
                                       "beta_pine",
                                       "beta_spruce",
                                       "beta_stem_dbh",
-                                      "alpha_plot",
+                                      #"alpha_plot",
                                       "sigma_plot",
                                       "alpha_plot_mean",
                                       "beta_stand_dbh",
@@ -112,8 +112,6 @@ zc <- coda.samples(jm,
                    n.iter = samples, 
                    thin = n.thin)
 
-
-
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
   write(., "results/ltr/parameters.txt")
@@ -121,9 +119,7 @@ capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>%
 ## 5. Validate the model and export validation data and figures ----------------
 
 pdf("figures/plot_zc.pdf")
-
-plot(zc) 
-
+plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
@@ -185,8 +181,6 @@ R2 <- summary(zj_val$p_cv, mean)
 
 ## 6. Produce and export figures -----------------------------------------------
 
-dev.off()
-
 ## Produce predictions:
 zj_pred <- jags.samples(jm, 
                         variable.names = c("out_d", 
@@ -211,7 +205,7 @@ plot(x, y[2,],
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(5, 15)) 
+     ylim = c(13, 30)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
