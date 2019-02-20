@@ -23,6 +23,9 @@ dir.create("results")
 dir.create("results/ltr")
 dir.create("figures")
 
+## Print all rows for mcmc outputs
+options(max.print = 10E5)
+
 ## 3. Load and explore data ----------------------------------------------------
 
 dir("clean")
@@ -61,8 +64,11 @@ data$ud_pred <- seq(min(data$understory_density),
 
 str(data)
 
-inits <-  list(list(p = 0.8,
-                    richness_true = rep(10, data$nobs),
+inits <-  list(list(p = rep(0.8, data$nobs),
+                    richness_true = rep(8, data$nobs),
+                    alpha_p = -1,
+                    beta_p = 0.1,
+                    sigma_p = 0.02,
                     beta_pine = 0.5,
                     beta_spruce = 0.5,
                     beta_stem_dbh = 0.5,
@@ -85,12 +91,15 @@ burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 20000
+samples <- 10000
 n.thin <- 5
 
 zc <- coda.samples(jm,
                    variable.names = c("p",
-                                      #"richness_true",
+                                      "alpha_p",
+                                      "beta_p",
+                                      "sigma_p",
+                                      "richness_true",
                                       "beta_pine",
                                       "beta_spruce",
                                       "beta_stem_dbh",
@@ -104,13 +113,18 @@ zc <- coda.samples(jm,
                    thin = n.thin)
 
 
+
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
   write(., "results/ltr/parameters.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
+pdf("figures/plot_zc.pdf")
+
 plot(zc) 
+
+dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
   write(., "results/ltr/diagnostics.txt")

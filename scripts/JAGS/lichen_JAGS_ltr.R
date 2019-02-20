@@ -1,7 +1,7 @@
 ## lichen ltr model
 ##
 ## First edit: 20190129
-## Last edit: 20190201
+## Last edit: 20190220
 ##
 ## Author: Julian Klein, Matt Low
 
@@ -12,10 +12,17 @@ model{
   ## Tree level:
   for(i in 1:nobs){
   
-    richness[i] ~ dbin(p, richness_true[i])
-    richness_sim[i] ~ dbin(p, richness_true[i])
+    richness[i] ~ dbin(p[i], richness_true[i])
+    richness_sim[i] ~ dbin(p[i], richness_true[i])
     
-    richness_true[i] ~ dpois(lambda[i])
+    p[i] ~ dbeta(a[i], b[i])
+    log(mu_p[i]) <- alpha_p + beta_p*stem_dbh[i, 1]
+    ## Moment matching:
+    a[i] <- (mu_p[i]^2 - mu_p[i]^3 - mu_p[i]*sigma_p^2)/sigma_p^2
+    b[i] <- (mu_p[i] - 2*mu_p[i]^2 + mu_p[i]^3 - sigma_p^2 + mu_p[i]*sigma_p^2)/
+            sigma_p^2
+    
+    richness_true[i] ~ dpois(lambda[i]) T(0, 30)
     log(lambda[i]) <- alpha_plot[plot[i]] + 
                       beta_pine*tree_sp_pine[i] + 
                       beta_spruce*tree_sp_spruce[i] + 
@@ -25,14 +32,14 @@ model{
   
   ## Plot level:
   for(j in 1:nplot){
-  
+
     alpha_plot[j] ~ dnorm(mu[j], tau_plot)
     mu[j] <- alpha_plot_mean +
              beta_stand_dbh*stand_dbh[j, 1] +
              beta_cdens*canopy_density[j, 1] +
              beta_udens*understory_density[j, 1]
-  
-  } 
+
+  }
 
   ## Block level:
   # for (k in 1:nblock){
@@ -42,24 +49,27 @@ model{
   # }
   
   ## Priors:
-  p ~ dbeta(5, .7)
+  #p ~ dbeta(5, .7)
+  alpha_p ~ dnorm(0, 0.001)
+  beta_p ~ dnorm(0, 0.001)
+  sigma_p ~ dunif(0, 50)
+  
   beta_pine ~ dnorm(0, 0.01)
   beta_spruce ~ dnorm(0, 0.01)
   beta_stem_dbh ~ dnorm(0.25, 0.01)
-  
-  sigma_plot ~ dunif(0, 5)
-  tau_plot <- 1/sigma_plot^2
   
   alpha_plot_mean ~ dnorm(2, 0.04)
   beta_stand_dbh ~ dnorm(0.25, 0.01)
   beta_cdens ~ dnorm(0, 0.01)
   beta_udens ~ dnorm(0, 0.01)
+  sigma_plot ~ dunif(0, 5)
+  tau_plot <- 1/sigma_plot^2
   
   # sigma_block ~ dunif(0, 5)
   # tau_block <- 1/sigma_block^2
 
   ## Model validation:
-  
+
   ## Bayesian p-value:
   mean_richness <- mean(richness[])
   mean_richness_sim <- mean(richness_sim[])
@@ -73,8 +83,8 @@ model{
   ## Model fit:
   for(m in 1:nobs){
 
-    sq[m] <- (richness[m] - p*richness_true[m])^2
-    sq_sim[m] <- (richness_sim[m] - p*richness_true[m])^2
+    sq[m] <- (richness[m] - p[m]*richness_true[m])^2
+    sq_sim[m] <- (richness_sim[m] - p[m]*richness_true[m])^2
 
   }
 
@@ -86,12 +96,12 @@ model{
   
   ## Predictions:
   for(n in 1:length(ud_pred)){
-    
+
     log(out_d[n]) <- alpha_plot_mean + beta_udens*ud_pred[n]
     log(out_p[n]) <- alpha_plot_mean + beta_udens*ud_pred[n] + beta_pine
     log(out_s[n]) <- alpha_plot_mean + beta_udens*ud_pred[n] + beta_spruce
     mean_out[n] <- (out_d[n] + out_p[n] + out_s[n])/3
-    
+
   }
    
 }
