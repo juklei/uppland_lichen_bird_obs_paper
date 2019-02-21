@@ -16,13 +16,11 @@ model{
     richness_sim[i] ~ dbin(p[i], richness_true[i])
     
     p[i] ~ dbeta(a[i], b[i])
-    log(mu_p[i]) <- alpha_p + beta_p*stem_dbh[i, 1]
     ## Moment matching:
-    a[i] <- (mu_p[i]^2 - mu_p[i]^3 - mu_p[i]*sigma_p^2)/sigma_p^2
-    b[i] <- (mu_p[i] - 2*mu_p[i]^2 + mu_p[i]^3 - sigma_p^2 + mu_p[i]*sigma_p^2)/
-            sigma_p^2
+    a[i] <- (mu_p^2 - mu_p^3 - mu_p*sigma_p^2)/sigma_p^2
+    b[i] <- (mu_p - 2*mu_p^2 + mu_p^3 - sigma_p^2 + mu_p*sigma_p^2)/sigma_p^2
     
-    richness_true[i] ~ dpois(lambda[i]) T(1, 40)
+    richness_true[i] ~ dpois(lambda[i]) #T(1, 50)
     log(lambda[i]) <- alpha_plot[plot[i]] + 
                       beta_pine*tree_sp_pine[i] + 
                       beta_spruce*tree_sp_spruce[i] + 
@@ -49,10 +47,11 @@ model{
   # }
   
   ## Priors:
-  #p ~ dbeta(5, .7)
-  alpha_p ~ dnorm(-0.05, 0.01)
-  beta_p ~ dnorm(-0.05, 0.01)
-  sigma_p ~ dunif(0, 50)
+  
+  # p ~ dbeta(7.2, .8)
+  # alpha_p ~ dnorm(-0.05, 0.01)
+  # beta_p ~ dnorm(-0.05, 0.01)
+  sigma_p ~ dunif(0, 1)
   
   beta_pine ~ dnorm(0, 0.01)
   beta_spruce ~ dnorm(0, 0.01)
@@ -85,14 +84,15 @@ model{
 
     sq[m] <- (richness[m] - p[m]*richness_true[m])^2
     sq_sim[m] <- (richness_sim[m] - p[m]*richness_true[m])^2
-
+    
   }
 
   fit <- sum(sq[])
   fit_sim <- sum(sq_sim[])
   p_fit <- step(fit_sim - fit)
 
-  R2 <- 1 - (mean(fit_sim)/fit)
+  #R2 <- 1 - (fit/sum(sq_mean[]))
+  #RMSE <- sqrt(mean(sq[]^2))
   
   ## Predictions:
   for(n in 1:length(ud_pred)){

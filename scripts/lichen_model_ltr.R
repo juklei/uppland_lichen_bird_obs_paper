@@ -55,7 +55,8 @@ data <- list(nobs = nrow(ltr),
              stem_dbh = scale(ltr$tree_dbh),
              stand_dbh = scale(plu$average_dbh_all_alive),
              canopy_density = scale(plu$PercentAbove5m),
-             understory_density = scale(plu$PercentBelow5m))
+             understory_density = scale(plu$PercentBelow5m),
+             mu_p = 0.95)
 
 ## Add prediction data:
 data$ud_pred <- seq(min(data$understory_density),
@@ -66,8 +67,8 @@ str(data)
 
 inits <-  list(list(p = rep(0.8, data$nobs),
                     richness_true = rep(8, data$nobs),
-                    alpha_p = -1,
-                    beta_p = 0.1,
+                    # alpha_p = -1,
+                    # beta_p = 0.1,
                     sigma_p = 0.02,
                     beta_pine = 0.5,
                     beta_spruce = 0.5,
@@ -87,7 +88,7 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  1000
+burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
@@ -95,15 +96,15 @@ samples <- 20000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c(#"p",
-                                      "alpha_p",
-                                      "beta_p",
+                   variable.names = c("p",
+                                      # "alpha_p",
+                                      # "beta_p",
                                       "sigma_p",
-                                      #"richness_true",
+                                      "richness_true",
                                       "beta_pine",
                                       "beta_spruce",
                                       "beta_stem_dbh",
-                                      #"alpha_plot",
+                                      "alpha_plot",
                                       "sigma_plot",
                                       "alpha_plot_mean",
                                       "beta_stand_dbh",
@@ -143,7 +144,8 @@ zj_val <- jags.samples(jm,
                                           "fit", 
                                           "fit_sim",
                                           "p_fit",
-                                          "R2"), 
+                                          "R2",
+                                          "RMSE"), 
                        n.iter = samples, 
                        thin = n.thin)
 
@@ -155,7 +157,7 @@ plot(zj_val$mean_richness,
      cex = .05)
 abline(0, 1)
 p <- summary(zj_val$p_mean, mean)
-text(x = 7, y = 10.8, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = 7, y = 10.5, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## Fit of variance:
 plot(zj_val$cv_richness, 
@@ -165,7 +167,7 @@ plot(zj_val$cv_richness,
      cex = .05)
 abline(0,1)
 p <- summary(zj_val$p_cv, mean)
-text(x = .25, y = .35, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = .25, y = .335, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## Overall fit:
 plot(zj_val$fit, 
@@ -175,9 +177,9 @@ plot(zj_val$fit,
      cex = .05)
 abline(0,1)
 p <- summary(zj_val$p_fit, mean)
-text(x = 1000, y = 3000, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = 480, y = 650, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
-R2 <- summary(zj_val$p_cv, mean)
+R2 <- summary(zj_val$R2, mean)
 
 ## 6. Produce and export figures -----------------------------------------------
 
@@ -205,7 +207,7 @@ plot(x, y[2,],
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(13, 30)) 
+     ylim = c(5, 15)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
