@@ -26,6 +26,14 @@ dir.create("figures")
 ## Print all rows for mcmc outputs
 options(max.print = 10E5)
 
+## Backscale function
+backscale <- function(pred_data, model_input_data) {
+  
+  pred_data*attr(model_input_data, 'scaled:scale') + 
+    attr(model_input_data, 'scaled:center')
+  
+}
+
 ## 3. Load and explore data ----------------------------------------------------
 
 dir("clean")
@@ -50,8 +58,11 @@ data <- list(nobs = nrow(ltr),
              plot = as.numeric(ltr$plot),
              nplot = length(unique(ltr$plot)),
              richness = ltr$richness,
-             tree_sp_pine = ifelse(ltr$tree_sp == "Ps", 1, 0),
-             tree_sp_spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
+             pine = ifelse(ltr$tree_sp == "Ps", 1, 0),
+             spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
+             aspen = ifelse(ltr$tree_sp == "Pt", 1, 0),
+             oak = ifelse(ltr$tree_sp == "Qr", 1, 0),
+             alder = ifelse(ltr$tree_sp == "Ag", 1, 0),
              stem_dbh = scale(ltr$tree_dbh),
              stand_dbh = scale(plu$average_dbh_all_alive),
              canopy_density = scale(plu$PercentAbove5m),
@@ -59,9 +70,17 @@ data <- list(nobs = nrow(ltr),
              mu_p = 0.95)
 
 ## Add prediction data:
+
+## Stem dbh:
+data$stem_dbh_pred <- seq(min(data$stem_dbh), max(data$stem_dbh), 0.05)
+
+## Understorey density:
 data$ud_pred <- seq(min(data$understory_density),
                     max(data$understory_density),
                     0.05)
+
+## Canopy density:
+data$cd_pred <- seq(min(data$canopy_density),  max(data$canopy_density), 0.05)
 
 str(data)
 
@@ -69,9 +88,12 @@ inits <-  list(list(p = rep(0.8, data$nobs),
                     richness_true = rep(8, data$nobs),
                     # alpha_p = -1,
                     # beta_p = 0.1,
-                    sigma_p = 0.02,
+                    sigma_p = 0.05,
                     beta_pine = 0.5,
                     beta_spruce = 0.5,
+                    beta_aspen = 0.5,
+                    beta_oak = 0.5,
+                    beta_alder = 0.5,
                     beta_stem_dbh = 0.5,
                     alpha_plot = rep(2, data$nplot),
                     sigma_plot = 2,
@@ -88,7 +110,7 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  10000
+burn.in <-  20000
 
 update(jm, n.iter = burn.in) 
 
@@ -103,6 +125,9 @@ zc <- coda.samples(jm,
                                       "richness_true",
                                       "beta_pine",
                                       "beta_spruce",
+                                      "beta_aspen",
+                                      "beta_oak",
+                                      "beta_alder",
                                       "beta_stem_dbh",
                                       "alpha_plot",
                                       "sigma_plot",
@@ -115,16 +140,16 @@ zc <- coda.samples(jm,
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/ltr/parameters.txt")
+  write(., "results/ltr/parameters_lichen.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
-pdf("figures/plot_zc.pdf")
+pdf("figures/plot_zc_lichen.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/ltr/diagnostics.txt")
+  write(., "results/ltr/diagnostics_lichen.txt")
 
 gelman.diag(zc)
 
@@ -144,8 +169,7 @@ zj_val <- jags.samples(jm,
                                           "fit", 
                                           "fit_sim",
                                           "p_fit",
-                                          "R2",
-                                          "RMSE"), 
+                                          "R2"), 
                        n.iter = samples, 
                        thin = n.thin)
 
@@ -179,30 +203,35 @@ abline(0,1)
 p <- summary(zj_val$p_fit, mean)
 text(x = 480, y = 650, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
-R2 <- summary(zj_val$R2, mean)
+#R2 <- summary(zj_val$R2, mean)
 
 ## 6. Produce and export figures -----------------------------------------------
 
 ## Produce predictions:
 zj_pred <- jags.samples(jm, 
-                        variable.names = c("out_d", 
-                                           "out_p", 
-                                           "out_s", 
-                                           "mean_out"),
+                        variable.names = c("s_dbh_mean", 
+                                           "ud_mean", 
+                                           "cd_mean", 
+                                           "spruce_mean",
+                                           "pine_mean",
+                                           "aspen_mean",
+                                           "oak_mean",
+                                           "alder_mean",
+                                           "birch_mean"),
                         n.iter = samples, 
                         thin = n.thin)
 
 ## Plotting prediction & 95% CIs using polygon:
 
-png("figures/plot_richness_ud.png", 1500, 1200, "px", res = 200)
+png("figures/plot_richness_dbh.png", 1500, 1200, "px", res = 200)
 
-pred <- summary(zj_pred$mean_out, quantile, c(.025,.5,.975))$stat
-x = data$ud_pred + mean(plu$PercentBelow5m)
-y = pred
+y <- summary(zj_pred$s_dbh_mean, quantile, c(.025,.5,.975))$stat
+x = backscale(data$stem_dbh_pred, data$stem_dbh)
+
 plot(x, y[2,], 
      col="blue", 
-     xlab="Understorey density", 
-     ylab="Richness per plot", 
+     xlab="Stem dbh", 
+     ylab="Richness per average plot and tree species", 
      cex = 1.4, 
      typ = "l", 
      tck = 0.03, 
@@ -213,5 +242,14 @@ lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
 
 dev.off()
+
+## 7. Export data for fancy figures --------------------------------------------
+
+export_l <- zj_pred
+export_l$stem_dbh_pred <- backscale(data$stem_dbh_pred, data$stem_dbh)
+export_l$ud_pred <- backscale(data$ud_pred, data$understory_density)
+export_l$cd_pred <- backscale(data$cd_pred, data$canopy_density)
+
+save(export_l, file = "clean/lichen_pred.rdata")
 
 ## -------------------------------END-------------------------------------------
