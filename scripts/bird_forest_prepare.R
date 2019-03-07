@@ -28,6 +28,8 @@ head(occ); head(f_plot); head(l_obs); head(exclude); head(ldm)
 
 ## Look at forest explanatory variable correlations and export:
 
+dir.create("figures")
+
 png("figures/forest_correlations_plot.png", 3000, 1000, "px")
 
 corrgram(unique(na.omit(f_plot[, c(6:8, 11:22)])), 
@@ -55,7 +57,12 @@ occ <- occ[!occ$species %in% c("grona",
                                "gravg"), ]
 
 ## Chose relevant columns for this analysis:
-occ <- occ[, c("block", "plot", "visit", "obs_year", "obs_time", "species")]
+occ <- droplevels(occ[, c("block", 
+                          "plot",
+                          "visit", 
+                          "obs_year", 
+                          "obs_time", 
+                          "species")])
 
 ## Make data set so we have all possible combinations of all visits
 ## and all species seen during the whole survey.
@@ -91,41 +98,45 @@ b_occ$n_visits <- ifelse(b_occ$species %in% ldm$species, 3, 5)
 
 b_occ <- as.data.table(b_occ)
 
+## Has the ldm species been seen in block i during the second visit?
+T1 <- b_occ[b_occ$visit == "second" & b_occ$species %in% ldm$species, 
+            list("observable_second" = ifelse(sum(observed) > 0, 1, 0),
+                 "plot" = plot), 
+            by = c("obs_year", "block", "species")]
 
+## Reduce to actual observations:
+T1 <- unique(T1[T1$observable_second == 1, c("obs_year", "plot", "species")])
 
+## Merge b_occ with T1 to add 1 to rows in T1:
 
-## Has the species been seen in block i during the second visit?
-b_occ[b_occ$visit == "second", 
-      list("observable_second" = ifelse(sum(observed) > 0, 1, 0)), 
-      by = c("obs_year", "block", "species")]
+T1$add <- 1
+b_occ <- merge(b_occ, T1, all.x = TRUE, by = c("obs_year", "plot", "species"))
+b_occ$add[is.na(b_occ$add)] <- 0
 
-unique(b_occ[b_occ$visit == "second", c("plot", "species")])
+b_occ$n_visits <- b_occ$n_visits + b_occ$add
 
-## Count during how many visits a species was possible to be seen:
-b_occ[b_occ$observable == 1, 
-      "n_visits" := nrow(.SD), 
-      by = c("obs_year", "plot", "species")]
+## If everything went well the number of lines with 4 visits should be 5 times
+## the nrow of T1:
+if(sum(b_occ$n_visits == 4) != 5*nrow(T1)) print("You made a mistake!")
 
+## Count the number of times a species was seen per plot and year:
+b_occ[, "n_obs" := sum(observed), by = c("obs_year", "plot", "species")]
 
+## Reduce to needed columns:
+b_occ <- unique(b_occ[, c("obs_year", 
+                          "block", 
+                          "plot", 
+                          "species", 
+                          "n_obs",
+                          "n_visits",
+                          "obs_time")])
 
+## Merge with forest data and export:
 
+bf_occ <- merge(b_occ, f_plot[, c(1,6:8,11:12,14:17,19:20)], by = "plot")
 
+dir.create("clean")
 
-
-
-
-
-
-
-
-
-
-
-
-
-## Merge with forest data:
-bf_occ <- merge(b_occ, f_plot, all.x = TRUE, by = c("plot", "block"))
-
-
+write.csv(bf_occ, "clean/bpo_50.csv")
 
 ## -------------------------------END-------------------------------------------
