@@ -37,7 +37,7 @@ model{
     alpha_plot[j] ~ dnorm(mu[j], tau_plot)
     mu[j] <- alpha_plot_mean +
              beta_stand_dbh*stand_dbh[j, 1] +
-             beta_cdens*canopy_density[j, 1] +
+             beta_cdens*canopy_density[j, 1] + 
              beta_udens*understory_density[j, 1]
 
   }

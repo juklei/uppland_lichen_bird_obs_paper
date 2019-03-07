@@ -4,7 +4,7 @@
 ## 
 ##
 ## First edit: 20190125
-## Last edit: 20190131
+## Last edit: 20190222
 ##
 ## Author: Julian Klein, Matt Low
 
@@ -110,11 +110,11 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  20000
+burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 20000
+samples <- 10000
 n.thin <- 5
 
 zc <- coda.samples(jm,
@@ -223,15 +223,15 @@ zj_pred <- jags.samples(jm,
 
 ## Plotting prediction & 95% CIs using polygon:
 
-png("figures/plot_richness_dbh.png", 1500, 1200, "px", res = 200)
+png("figures/plot_richness_cd.png", 1500, 1200, "px", res = 200)
 
-y <- summary(zj_pred$s_dbh_mean, quantile, c(.025,.5,.975))$stat
-x = backscale(data$stem_dbh_pred, data$stem_dbh)
+y <- summary(zj_pred$cd_mean, quantile, c(.025,.5,.975))$stat
+x = backscale(data$cd_pred, data$canopy_density)
 
 plot(x, y[2,], 
      col="blue", 
-     xlab="Stem dbh", 
-     ylab="Richness per average plot and tree species", 
+     xlab="Canopy density", 
+     ylab="Richness per averge tree", 
      cex = 1.4, 
      typ = "l", 
      tck = 0.03, 

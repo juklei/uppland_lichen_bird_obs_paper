@@ -3,7 +3,7 @@
 ## exported.
 ##
 ## First edit: 20181207
-## Last edit: 20190125
+## Last edit: 20190306
 ##
 ## Author: Julian Klein
 
@@ -192,8 +192,9 @@ lof_plot$plot_dbh <- ifelse(lof_plot$average_dbh_all_alive > T1,
 lof_plot$nr_tree_sp <- as.factor(lof_plot$nr_tree_sp)
 #levels(lof_plot$nr_tree_sp)[3:4] <- ">2"
 
+## Don't forget to reduce data set for non-lidar vars
 g1 <- ggplot(lof_tree[lof_tree$buffer == 10 & 
-                        lof_tree$Stem.S.Branches.B.T.Total == "T", ], ## Don't forget to reduce data set for non-lidar vars
+                        lof_tree$Stem.S.Branches.B.T.Total == "T", ], 
              aes(x = PercentAbove5m, 
                  y = richness, 
                  fill = tree_sp, 
