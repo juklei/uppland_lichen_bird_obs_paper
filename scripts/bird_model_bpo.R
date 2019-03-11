@@ -81,15 +81,10 @@ str(data)
 T1 <- data$nseen
 T1 <- ifelse(T1 > 0, 1, 0)
 
-## Inits for p_occ
-T2 <- as.matrix(data$nseen[1,,])
-T2[] <- 0.4 
-
 inits <-  list(list(occ_true = T1,
                     p_det = rep(0.4, data$nspecies),
-                    p_occ = T2,
                     alpha = rep(0, data$nspecies),
-                    beta = rep(0, data$nspecies))
+                    beta_ud = rep(0, data$nspecies))
                )
 
 model <- "scripts/JAGS/bird_JAGS_bpo.R"
@@ -100,32 +95,24 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  10000
+burn.in <-  100000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 10000
+samples <- 50000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c("occ_true",
-                                      "p_det",
-                                      "p_occ"), 
+                   variable.names = c("alpha",
+                                      "beta_ud",
+                                      "occ_true",
+                                      "p_det"), 
                    n.iter = samples, 
                    thin = n.thin)
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
   write(., "results/bpo/parameters_bird.txt")
-
-zj_results <- jags.samples(jm, 
-                           variable.names = c("p_det"),
-                           n.iter = samples, 
-                           thin = n.thin)
-
-T3 <- summary(zj_results$p_det, quantile, c(.025,.5,.975))$stat
-colnames(T3) <- unique(bpo$species)
-write.csv(t(T3), "results/bpo/detection_probability.csv")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
@@ -146,10 +133,10 @@ zj_pred <- jags.samples(jm,
 
 ## Plotting prediction & 95% CIs using polygon:
 
-png("figures/plot_richness_ud.png", 1500, 1200, "px", res = 200)
+png("figures/plot_richness_ud_bird.png", 1500, 1200, "px", res = 200)
 
-y <- summary(zj_pred$ud_mean, quantile, c(.025,.5,.975))$stat
-x = backscale(data$ud_pred, data$canopy_density)
+y <- summary(zj_pred$richness, quantile, c(.025,.5,.975))$stat
+x = backscale(data$ud_pred, data$understory_density)
 
 plot(x, y[2,], 
      col="blue", 
@@ -159,7 +146,7 @@ plot(x, y[2,],
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(5, 15)) 
+     ylim = c(10, 30)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
@@ -170,20 +157,11 @@ dev.off()
 
 ## -------------------------------END-------------------------------------------
 
-## Notes:
-
-# Why is p_occ not also indexed by site? Do I have to index it by year?
-
-# Adding explanatory variables on p_occ does not work. Do I need to fully index
-# also the explanatory data, e.g. understorey density[i,k,y]?
-
-# The nesting of year, site, species; is it correct?
-
-# Even though nseen for some plots in 2018 are NA, it estimates true occupancy
-# also for those plots. I am assuming its the priors? Is the solution to set the
-# priors to 0? Why is it not enough to state that the nvisits for that spot is
-# 0 to not get an estimate for true occupancy?
-
 ## To add a year effect on true occupancy / p_occ should I put that on alpha
-## in the explanatory model on p_occ?
+## in the explanatory model on p_occ? try it!
+
+## Make a different model with pooled observation data and nvisits data. Then
+## put a year effect on the species specific alpha for p_occ. This will also 
+## give you one free dimension for structuring the visits according to time and
+## add observational covariates.
 

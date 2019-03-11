@@ -1,7 +1,7 @@
 ## bird bpo model
 ##
 ## First edit: 20190307
-## Last edit: 20190308
+## Last edit: 20190311
 ##
 ## Author: Julian Klein
 
@@ -22,8 +22,8 @@ model{
     for(k in 1:nspecies){
       for(y in 1:nyears){
         for(i in 1:nsites){
-          occ_true[i,k,y] ~ dbern(p_occ[k,y])
-          #logit(p_occ[k]) <- alpha[k] + beta_ud[k]*understory_density[i,1]
+          occ_true[i,k,y] ~ dbern(p_occ[i,k,y])
+          logit(p_occ[i,k,y]) <- alpha[k] + beta_ud[k]*understory_density[i,1]
       }
     }
   }
@@ -43,22 +43,18 @@ model{
     beta_ud[k] ~ dnorm(0, 0.01)
   }
 
-  for(k in 1:nspecies){
-    for(y in 1:nyears){
-      p_occ[k,y] ~ dunif(0, 1)
-    }
-  }
-  
   ## Model validation:
   
   #...
   
   ## Predictions:
   
-  for(y in 1:nyears){
-    for(i in 1:nsites){
-      richness[i,y] <- sum(occ_true[i,,y])
+  for(m in 1:length(ud_pred)) {
+    for(k in 1:nspecies){
+      occ_true_pred[m,k] ~ dbern(p_occ_pred[m,k])
+      logit(p_occ_pred[m,k]) <- alpha[k] + beta_ud[k]*ud_pred[m]
     }
+    richness[m] <- sum(occ_true_pred[m,])
   }
   
 }
