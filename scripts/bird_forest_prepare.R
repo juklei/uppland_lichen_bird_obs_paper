@@ -50,17 +50,17 @@ occ <- merge(occ, exclude, by = "plot")
 occ <- occ[!(occ$obs_year == 2018 & occ$include_2018 == "N"), ]
 
 ## Exclude predators, birds with large hr and passers from obs:
-occ <- occ[!occ$species %in% c("duvhk",
+occ <- occ[!occ$species %in% c("bergk",
+                               "duvhk",
                                "ormvk",
-                               "spark",
+                               "ekore",
+                               "gravg",
+                               "grona", 
                                "korp",
                                "kraka",
+                               "mard",
                                "mindb",
-                               "grona", 
-                               "bergk", 
-                               "ekore", 
-                               "mard", 
-                               "gravg"), ]
+                               "spark"), ]
 
 ## Chose relevant columns for this analysis:
 occ <- droplevels(occ[, c("block", 

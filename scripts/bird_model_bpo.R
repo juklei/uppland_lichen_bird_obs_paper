@@ -73,7 +73,7 @@ data$ud_pred <- seq(min(data$understory_density),
                     0.05)
 
 ## Canopy density:
-data$cd_pred <- seq(min(data$canopy_density),  max(data$canopy_density), 0.05)
+data$cd_pred <- seq(min(data$canopy_density), max(data$canopy_density), 0.05)
 
 str(data)
 
@@ -83,8 +83,10 @@ T1 <- ifelse(T1 > 0, 1, 0)
 
 inits <-  list(list(occ_true = T1,
                     p_det = rep(0.4, data$nspecies),
-                    alpha = rep(0, data$nspecies),
-                    beta_ud = rep(0, data$nspecies))
+                    alpha_year_mean = matrix(rep(0, 2*data$nspecies), ncol = 2),
+                    beta_ud = rep(0, data$nspecies),
+                    mu_year = rep(0, data$nspecies),
+                    tau_year = rep(0.1, data$nspecies))
                )
 
 model <- "scripts/JAGS/bird_JAGS_bpo.R"
@@ -100,7 +102,7 @@ burn.in <-  100000
 update(jm, n.iter = burn.in) 
 
 samples <- 50000
-n.thin <- 5
+n.thin <- 10
 
 zc <- coda.samples(jm,
                    variable.names = c("alpha",
