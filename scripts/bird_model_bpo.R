@@ -1,7 +1,7 @@
 ## model bird richness in a hierarchical model 
 ## 
 ## First edit: 20190307
-## Last edit: 
+## Last edit: 20190314
 ##
 ## Author: Julian Klein
 
@@ -83,7 +83,7 @@ T1 <- ifelse(T1 > 0, 1, 0)
 
 inits <-  list(list(occ_true = T1,
                     p_det = rep(0.4, data$nspecies),
-                    alpha_mean = 2,
+                    alpha_mean = 5,
                     beta_ud = rep(0, data$nspecies),
                     sigma_year = 0.2,
                     sigma_spec = 2,
@@ -151,7 +151,7 @@ plot(zj_val$mean_nseen,
      cex = .05)
 abline(0, 1)
 p <- summary(zj_val$p_mean, mean)
-text(x = 0.4, y = 0.53, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = 0.5, y = 0.66, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## Fit of variance:
 plot(zj_val$cv_nseen, 
@@ -161,7 +161,7 @@ plot(zj_val$cv_nseen,
      cex = .05)
 abline(0,1)
 p <- summary(zj_val$p_cv, mean)
-text(x = 1.5, y = 2.1, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = 1.5, y = 1.9, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## Overall fit:
 plot(zj_val$fit, 
@@ -171,7 +171,7 @@ plot(zj_val$fit,
      cex = .05)
 abline(0,1)
 p <- summary(zj_val$p_fit, mean)
-text(x = 1300, y = 1300, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = 1300, y = 1200, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 
 ## 6. Produce and export figures -----------------------------------------------
@@ -197,7 +197,7 @@ plot(x, y[2,],
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(20, 40)) 
+     ylim = c(15, 30)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")

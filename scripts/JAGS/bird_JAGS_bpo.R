@@ -49,7 +49,7 @@ model{
     beta_ud[k] ~ dnorm(0, 0.01)
   }
   
-  alpha_mean ~ dnorm(0, 0.001)
+  alpha_mean ~ dnorm(5, 0.01)
   sigma_spec ~ dgamma(0.001, 0.001)
   tau_spec <- 1/sigma_spec^2
   sigma_year ~ dgamma(0.001, 0.001)

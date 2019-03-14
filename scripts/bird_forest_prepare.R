@@ -62,6 +62,10 @@ occ <- occ[!occ$species %in% c("bergk",
                                "mindb",
                                "spark"), ]
 
+## Exclude species only observed once:
+occ <- occ[!occ$species %in% dimnames(table(
+  occ$species)[table(occ$species) == 1])[[]], ]
+
 ## Chose relevant columns for this analysis:
 occ <- droplevels(occ[, c("block", 
                           "plot",
