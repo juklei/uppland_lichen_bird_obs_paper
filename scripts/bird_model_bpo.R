@@ -56,10 +56,15 @@ nseen <- acast(bpo[, c("plot", "species", "n_obs", "obs_year")],
                formula = plot ~ species ~ obs_year, 
                value.var = "n_obs")
 
+obs_time <- acast(unique(bpo[, c("species", "obs_year", "obs_time")]),
+                  formula = species ~ obs_year,
+                  value.var = "obs_time")
+
 ## Create model data set:
 data <- list(nyears = length(unique(bpo$obs_year)),
              nsites = nlevels(bpo$plot),
              nspecies = nlevels(bpo$species),
+             obs_time = obs_time,
              nvisits = nvisits,
              nseen = nseen,
              canopy_density = scale(pld$PercentAbove5m),
@@ -82,7 +87,8 @@ T1 <- data$nseen
 T1 <- ifelse(T1 > 0, 1, 0)
 
 inits <-  list(list(occ_true = T1,
-                    p_det = rep(0.4, data$nspecies),
+                    alpha_p_det = rep(0.4, data$nspecies),
+                    beta_obs_time = 0.2,
                     alpha_mean = 5,
                     beta_ud = rep(0, data$nspecies),
                     sigma_year = 0.2,
@@ -99,7 +105,7 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  20000
+burn.in <-  1000000
 
 update(jm, n.iter = burn.in) 
 
@@ -107,12 +113,13 @@ samples <- 10000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c("alpha_mean",
+                   variable.names = c("alpha_p_det",
+                                      "beta_obs_time",
+                                      "alpha_mean",
                                       "sigma_year",
                                       "sigma_spec",
                                       "beta_ud",
-                                      "occ_true",
-                                      "p_det"), 
+                                      "occ_true"), 
                    n.iter = samples, 
                    thin = n.thin)
 
@@ -197,7 +204,7 @@ plot(x, y[2,],
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(15, 30)) 
+     ylim = c(20, 35)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
@@ -207,13 +214,3 @@ dev.off()
 ## 7. Export data for fancy figures --------------------------------------------
 
 ## -------------------------------END-------------------------------------------
-
-## To add a year effect on true occupancy / p_occ should I put that on alpha
-## in the explanatory model on p_occ? try it!
-
-## Change how you model the year random effect, e.g. mean +- epsilon. 
-## Think about wether this is even 
-## required given that you already have the whole model structured according 
-## to the years.
-
-## Add log(obs_time) as an offset term!

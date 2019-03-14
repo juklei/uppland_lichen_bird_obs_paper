@@ -1,7 +1,7 @@
 ## bird bpo model
 ##
 ## First edit: 20190307
-## Last edit: 20190311
+## Last edit: 20190314
 ##
 ## Author: Julian Klein
 
@@ -13,9 +13,10 @@ model{
   for(k in 1:nspecies){
     for(y in 1:nyears){
       for(i in 1:nsites){
-        nseen[i,k,y] ~ dbin(occ_true[i,k,y]*p_det[k], nvisits[i,k,y])
-        nseen_sim[i,k,y] ~ dbin(occ_true[i,k,y]*p_det[k], nvisits[i,k,y])
+        nseen[i,k,y] ~ dbin(occ_true[i,k,y]*p_det[k,y], nvisits[i,k,y])
+        nseen_sim[i,k,y] ~ dbin(occ_true[i,k,y]*p_det[k,y], nvisits[i,k,y])
       }
+    logit(p_det[k,y]) <- alpha_p_det[k] + beta_obs_time*log(obs_time[k,y])
     }
   }
   
@@ -45,10 +46,11 @@ model{
   ## Priors:
   
   for(k in 1:nspecies){
-    p_det[k] ~ dunif(0, 1)
+    alpha_p_det[k] ~ dnorm(0, 0.01)
     beta_ud[k] ~ dnorm(0, 0.01)
   }
   
+  beta_obs_time ~ dnorm(0.5, 0.01)
   alpha_mean ~ dnorm(5, 0.01)
   sigma_spec ~ dgamma(0.001, 0.001)
   tau_spec <- 1/sigma_spec^2
@@ -71,9 +73,10 @@ model{
   for(k in 1:nspecies){
     for(y in 1:nyears){
       for(i in 1:nsites){
-        sq[i,k,y] <- (nseen[i,k,y] - occ_true[i,k,y]*p_det[k]*nvisits[i,k,y])^2
+        sq[i,k,y] <- (nseen[i,k,y] - 
+                      occ_true[i,k,y]*p_det[k,y]*nvisits[i,k,y])^2
         sq_sim[i,k,y] <- (nseen_sim[i,k,y] - 
-                          occ_true[i,k,y]*p_det[k]*nvisits[i,k,y])^2
+                          occ_true[i,k,y]*p_det[k,y]*nvisits[i,k,y])^2
       }
     }
   }
