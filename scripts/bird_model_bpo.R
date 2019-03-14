@@ -83,10 +83,12 @@ T1 <- ifelse(T1 > 0, 1, 0)
 
 inits <-  list(list(occ_true = T1,
                     p_det = rep(0.4, data$nspecies),
-                    alpha_year_mean = matrix(rep(0, 2*data$nspecies), ncol = 2),
+                    alpha_mean = 2,
                     beta_ud = rep(0, data$nspecies),
-                    mu_year = rep(0, data$nspecies),
-                    tau_year = rep(0.1, data$nspecies))
+                    sigma_year = 0.2,
+                    sigma_spec = 2,
+                    year_effect = rep(0, data$nyear),
+                    spec_effect = rep(0, data$nspecies))
                )
 
 model <- "scripts/JAGS/bird_JAGS_bpo.R"
@@ -97,15 +99,17 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  100000
+burn.in <-  20000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 50000
-n.thin <- 10
+samples <- 10000
+n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c("alpha",
+                   variable.names = c("alpha_mean",
+                                      "sigma_year",
+                                      "sigma_spec",
                                       "beta_ud",
                                       "occ_true",
                                       "p_det"), 
@@ -124,6 +128,51 @@ dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
   write(., "results/bpo/diagnostics_bird.txt")
+
+## Produce validation metrics: 
+zj_val <- jags.samples(jm, 
+                       variable.names = c("mean_nseen", 
+                                          "mean_nseen_sim",
+                                          "p_mean", 
+                                          "cv_nseen", 
+                                          "cv_nseen_sim", 
+                                          "p_cv", 
+                                          "fit", 
+                                          "fit_sim",
+                                          "p_fit"), 
+                       n.iter = samples, 
+                       thin = n.thin)
+
+## Fit of mean:
+plot(zj_val$mean_nseen, 
+     zj_val$mean_nseen_sim, 
+     xlab = "mean real", 
+     ylab = "mean simulated", 
+     cex = .05)
+abline(0, 1)
+p <- summary(zj_val$p_mean, mean)
+text(x = 0.4, y = 0.53, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+
+## Fit of variance:
+plot(zj_val$cv_nseen, 
+     zj_val$cv_nseen_sim, 
+     xlab = "cv real", 
+     ylab = "cv simulated", 
+     cex = .05)
+abline(0,1)
+p <- summary(zj_val$p_cv, mean)
+text(x = 1.5, y = 2.1, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+
+## Overall fit:
+plot(zj_val$fit, 
+     zj_val$fit_sim, 
+     xlab = "ssq real", 
+     ylab = "ssq simulated", 
+     cex = .05)
+abline(0,1)
+p <- summary(zj_val$p_fit, mean)
+text(x = 1300, y = 1300, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+
 
 ## 6. Produce and export figures -----------------------------------------------
 
@@ -148,7 +197,7 @@ plot(x, y[2,],
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(10, 30)) 
+     ylim = c(20, 40)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
@@ -162,8 +211,9 @@ dev.off()
 ## To add a year effect on true occupancy / p_occ should I put that on alpha
 ## in the explanatory model on p_occ? try it!
 
-## Make a different model with pooled observation data and nvisits data. Then
-## put a year effect on the species specific alpha for p_occ. This will also 
-## give you one free dimension for structuring the visits according to time and
-## add observational covariates.
+## Change how you model the year random effect, e.g. mean +- epsilon. 
+## Think about wether this is even 
+## required given that you already have the whole model structured according 
+## to the years.
 
+## Add log(obs_time) as an offset term!
