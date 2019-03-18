@@ -97,8 +97,6 @@ model{
   fit_sim <- sum(sq_sim[])
   p_fit <- step(fit_sim - fit)
 
-  #R2 <- 1 - (mean(fit_sim)/fit)
-  
   ## Predictions:
 
   ## Stem dbh:

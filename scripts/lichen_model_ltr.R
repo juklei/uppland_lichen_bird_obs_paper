@@ -110,19 +110,17 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  10000
+burn.in <-  1000000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 10000
-n.thin <- 5
+samples <- 50000
+n.thin <- 50
 
 zc <- coda.samples(jm,
-                   variable.names = c("p",
-                                      # "alpha_p",
+                   variable.names = c(# "alpha_p",
                                       # "beta_p",
                                       "sigma_p",
-                                      "richness_true",
                                       "beta_pine",
                                       "beta_spruce",
                                       "beta_aspen",
@@ -168,8 +166,7 @@ zj_val <- jags.samples(jm,
                                           "p_cv", 
                                           "fit", 
                                           "fit_sim",
-                                          "p_fit",
-                                          "R2"), 
+                                          "p_fit"), 
                        n.iter = samples, 
                        thin = n.thin)
 
@@ -203,8 +200,6 @@ abline(0,1)
 p <- summary(zj_val$p_fit, mean)
 text(x = 480, y = 650, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
-#R2 <- summary(zj_val$R2, mean)
-
 ## 6. Produce and export figures -----------------------------------------------
 
 ## Produce predictions:
@@ -223,14 +218,14 @@ zj_pred <- jags.samples(jm,
 
 ## Plotting prediction & 95% CIs using polygon:
 
-png("figures/plot_richness_cd.png", 1500, 1200, "px", res = 200)
+png("figures/plot_richness_ud.png", 1500, 1200, "px", res = 200)
 
-y <- summary(zj_pred$cd_mean, quantile, c(.025,.5,.975))$stat
-x = backscale(data$cd_pred, data$canopy_density)
+y <- summary(zj_pred$ud_mean, quantile, c(.025,.5,.975))$stat
+x = backscale(data$ud_pred, data$understory_density)
 
 plot(x, y[2,], 
      col="blue", 
-     xlab="Canopy density", 
+     xlab="Understory density", 
      ylab="Richness per averge tree", 
      cex = 1.4, 
      typ = "l", 
