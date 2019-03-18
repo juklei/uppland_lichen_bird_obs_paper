@@ -25,7 +25,7 @@ library(ggplot2)
 dir("data")
 f_subplot <- read.csv("data/forest_data_uppland_subplot.csv")
 f_plot <- read.csv("data/forest_data_uppland_plot.csv")
-l_obs <- read.csv("data/lavar_uppland.csv")
+l_obs <- read.csv("data/Data_lavar_Almunge15_March_2019.csv")
 
 head(f_subplot); head(f_plot); head(l_obs)
 
@@ -63,12 +63,23 @@ levels(l_obs$circle_10m) <- c("middle", "east", "west")
 l_obs <- l_obs[!is.na(l_obs$Tree.species),]
 
 ## Reduce l_obs to only uncut trees:
-l_obs <- l_obs[!is.na(l_obs$Tree.no), c(2:7, 10:14, 17:112)]
+l_obs <- l_obs[!is.na(l_obs$Tree.no), c(2:7, 10:14, 17:137)]
+
+## Merge Physcia adscendens, P. tenella och P. adscendens/P. tenella to
+## P. adscendens/P. tenella"
+T1 <- l_obs[, c("Physcia.adscendens", 
+                "Physcia.tenella",
+                "P..adscendens.tenella")]
+l_obs$P..adscendens.tenella <- ifelse(rowSums(T1, na.rm = TRUE) > 0, 1, NA)
 
 ## Make data frame based on occupancy of all species per tree:
 l_occ <- melt(l_obs, 
               id.vars = colnames(l_obs)[1:11],
-              measure.vars = colnames(l_obs)[c(12:17, 19:100, 102:107)],
+              measure.vars = colnames(l_obs)[c(12:24, 
+                                               26:105, 
+                                               107, 
+                                               109:127, 
+                                               129:132)],
               value.name = "observed",
               variable.name = "species")
 
@@ -162,9 +173,9 @@ lof_tree <- merge(lof_tree,
                   allow.cartesian = TRUE)
 
 # ## Bin all deciduous tree species into trivial and complex:
-# levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in% 
+# levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
 #                            c("Ag", "Bp")] <- "Dc_trivial"
-# levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in% 
+# levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
 #                            c("Qr", "Pt")] <- "Dc_complex"
 # levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
 #                            c("Dc_complex", "Dc_trivial")] <- "Dc"
@@ -179,12 +190,12 @@ lof_plot <- merge(lof_plot,
 
 ## Categorise plot_dbh for age:
 
-T1 <- mean(lof_tree$average_dbh_all_alive, na.rm = TRUE)
+T2 <- mean(lof_tree$average_dbh_all_alive, na.rm = TRUE)
 
-lof_tree$plot_dbh <- ifelse(lof_tree$average_dbh_all_alive > T1,
+lof_tree$plot_dbh <- ifelse(lof_tree$average_dbh_all_alive > T2,
                             "wide plot dbh", 
                             "narrow plot dbh")
-lof_plot$plot_dbh <- ifelse(lof_plot$average_dbh_all_alive > T1,
+lof_plot$plot_dbh <- ifelse(lof_plot$average_dbh_all_alive > T2,
                             "wide plot dbh", 
                             "narrow plot dbh")
 
@@ -195,7 +206,7 @@ lof_plot$nr_tree_sp <- as.factor(lof_plot$nr_tree_sp)
 ## Don't forget to reduce data set for non-lidar vars
 g1 <- ggplot(lof_tree[lof_tree$buffer == 10 & 
                         lof_tree$Stem.S.Branches.B.T.Total == "T", ], 
-             aes(x = PercentAbove5m, 
+             aes(x = PercentBelow5m, 
                  y = richness, 
                  fill = tree_sp, 
                  color = tree_sp
@@ -206,7 +217,7 @@ g4 <- facet_grid(plot_dbh ~ ., scales = "free")
 
 dir.create("figures")
 
-png("figures/richness_PA5.png", 1200, 1200, "px")
+png("figures/richness_PB5.png", 1200, 1200, "px")
 
 g1+g3+g4+theme_bw(40)
 
