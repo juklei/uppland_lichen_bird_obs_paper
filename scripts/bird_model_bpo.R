@@ -47,6 +47,9 @@ pld <- unique(bpo[, c(2,9:19)])
 
 ## Create data arrays:
 
+## Which sites were visited in which year?
+#nsites <- as.matrix() ## Continue here...
+
 nvisits <- acast(bpo[, c("plot", "species", "n_visits", "obs_year")],
                  formula = plot ~ species ~ obs_year, 
                  value.var = "n_visits")
@@ -78,7 +81,7 @@ data$ud_pred <- seq(min(data$understory_density),
                     0.05)
 
 ## Canopy density:
-data$cd_pred <- seq(min(data$canopy_density), max(data$canopy_density), 0.05)
+data$cd_pred <- seq(min(data$canopy_density), max(data$canopy_density), 0.5)
 
 str(data)
 
@@ -91,10 +94,7 @@ inits <-  list(list(occ_true = T1,
                     beta_obs_time = 0.2,
                     alpha_mean = 5,
                     beta_ud = rep(0, data$nspecies),
-                    sigma_year = 0.2,
-                    sigma_spec = 2,
-                    year_effect = rep(0, data$nyear),
-                    spec_effect = rep(0, data$nspecies))
+                    sigma_alpha = 2)
                )
 
 model <- "scripts/JAGS/bird_JAGS_bpo.R"
@@ -105,21 +105,19 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  1000000
+burn.in <-  100000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 10000
+samples <- 50000
 n.thin <- 5
 
 zc <- coda.samples(jm,
                    variable.names = c("alpha_p_det",
                                       "beta_obs_time",
                                       "alpha_mean",
-                                      "sigma_year",
-                                      "sigma_spec",
-                                      "beta_ud",
-                                      "occ_true"), 
+                                      "sigma_alpha",
+                                      "beta_ud"), 
                    n.iter = samples, 
                    thin = n.thin)
 
@@ -204,7 +202,7 @@ plot(x, y[2,],
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(20, 35)) 
+     ylim = c(20, 40)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")

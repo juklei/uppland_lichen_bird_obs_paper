@@ -1,9 +1,9 @@
-## bird bpo model
+## bird bpo model with a random intercept
 ##
 ## First edit: 20190307
 ## Last edit: 20190314
 ##
-## Author: Julian Klein
+## Author: Julian Klein, Matt Low
 
 model{
   
@@ -25,9 +25,7 @@ model{
     for(y in 1:nyears){
       for(i in 1:nsites){
         occ_true[i,k,y] ~ dbern(p_occ[i,k,y])
-        logit(p_occ[i,k,y]) <- alpha_mean + 
-                               spec_effect[k] + 
-                               year_effect[y] + 
+        logit(p_occ[i,k,y]) <- alpha[k,y] + 
                                beta_ud[k]*understory_density[i,1]
       }
     }
@@ -35,27 +33,22 @@ model{
   
   ## Species effect:
   for(k in 1:nspecies){
-    spec_effect[k] ~ dnorm(0, tau_spec)
-  }
-  
-  ## Year effect:
-  for (y in 1:nyears){
-    year_effect[y] ~ dnorm(0, tau_year)
+    for(y in 1:nyears){
+     alpha[k,y] ~ dnorm(alpha_mean, tau_alpha)
+    }
   }
   
   ## Priors:
   
   for(k in 1:nspecies){
-    alpha_p_det[k] ~ dnorm(0, 0.01)
-    beta_ud[k] ~ dnorm(0, 0.01)
+    alpha_p_det[k] ~ dnorm(0, 0.0001)
+    beta_ud[k] ~ dnorm(0, 0.0001)
   }
   
-  beta_obs_time ~ dnorm(0.5, 0.01)
-  alpha_mean ~ dnorm(5, 0.01)
-  sigma_spec ~ dgamma(0.001, 0.001)
-  tau_spec <- 1/sigma_spec^2
-  sigma_year ~ dgamma(0.001, 0.001)
-  tau_year <- 1/sigma_year^2
+  beta_obs_time ~ dnorm(0.5, 0.0001)
+  alpha_mean ~ dnorm(0, 0.0001)
+  sigma_alpha ~ dgamma(0.0001, 0.0001)
+  tau_alpha <- 1/sigma_alpha^2
 
   ## Model validation:
   
@@ -90,10 +83,13 @@ model{
   ## Understory density:
   for(m in 1:length(ud_pred)){
     for(k in 1:nspecies){
-      occ_true_pred[m,k] ~ dbern(p_occ_pred[m,k])
-      logit(p_occ_pred[m,k]) <- alpha_mean + beta_ud[k]*ud_pred[m]
+      for(y in 1:nyears){
+        occ_true_pred[m,k,y] ~ dbern(p_occ_pred[m,k,y])
+        logit(p_occ_pred[m,k,y]) <- alpha[k,y] + beta_ud[k]*ud_pred[m]
+      }
+      occ_true_sum[m,k] <- sum(occ_true_pred[m,k,])/nyears
     }
-    richness[m] <- sum(occ_true_pred[m,])
+    richness[m] <- sum(occ_true_sum[m,])
   }
   
 }
