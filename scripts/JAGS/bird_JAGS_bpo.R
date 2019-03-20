@@ -26,7 +26,9 @@ model{
       for(i in 1:nsites){
         occ_true[i,k,y] ~ dbern(p_occ[i,k,y])
         logit(p_occ[i,k,y]) <- alpha[k,y] + 
-                               beta_ud[k]*understory_density[i,1]
+                               beta_ud[k]*understory_density[i,1] +
+                               beta_cd[k]*canopy_density[i,1] +
+                               beta_stand_dbh[k]*stand_dbh[i,1]
       }
     }
   }
@@ -43,9 +45,11 @@ model{
   for(k in 1:nspecies){
     alpha_p_det[k] ~ dnorm(0, 0.0001)
     beta_ud[k] ~ dnorm(0, 0.0001)
+    beta_cd[k] ~ dnorm(0, 0.0001)
+    beta_stand_dbh[k] ~ dnorm(0, 0.0001)
   }
   
-  beta_obs_time ~ dnorm(0.5, 0.0001)
+  beta_obs_time ~ dnorm(0.5, 0.001)
   alpha_mean ~ dnorm(0, 0.0001)
   sigma_alpha ~ dgamma(0.0001, 0.0001)
   tau_alpha <- 1/sigma_alpha^2
@@ -84,12 +88,45 @@ model{
   for(m in 1:length(ud_pred)){
     for(k in 1:nspecies){
       for(y in 1:nyears){
-        occ_true_pred[m,k,y] ~ dbern(p_occ_pred[m,k,y])
-        logit(p_occ_pred[m,k,y]) <- alpha[k,y] + beta_ud[k]*ud_pred[m]
+        occ_true_ud[m,k,y] ~ dbern(p_occ_ud[m,k,y])
+        logit(p_occ_ud[m,k,y]) <- alpha[k,y] + beta_ud[k]*ud_pred[m]
       }
-      occ_true_sum[m,k] <- sum(occ_true_pred[m,k,])/nyears
+      ots_ud[m,k] <- sum(occ_true_ud[m,k,])/nyears
     }
-    richness[m] <- sum(occ_true_sum[m,])
+    r_ud[m] <- sum(ots_ud[m,])
+  }
+  
+  ## Canopy density:
+  for(m in 1:length(cd_pred)){
+    for(k in 1:nspecies){
+      for(y in 1:nyears){
+        occ_true_cd[m,k,y] ~ dbern(p_occ_cd[m,k,y])
+        logit(p_occ_cd[m,k,y]) <- alpha[k,y] + beta_cd[k]*cd_pred[m]
+      }
+      ots_cd[m,k] <- sum(occ_true_cd[m,k,])/nyears
+    }
+    r_cd[m] <- sum(ots_cd[m,])
+  }
+  
+  ## Stand dbh:
+  for(m in 1:length(stand_dbh_pred)){
+    for(k in 1:nspecies){
+      for(y in 1:nyears){
+        occ_true_stand_dbh[m,k,y] ~ dbern(p_occ_stand_dbh[m,k,y])
+        logit(p_occ_stand_dbh[m,k,y]) <- alpha[k,y] + 
+                                         beta_stand_dbh[k]*stand_dbh_pred[m]
+      }
+      ots_stand_dbh[m,k] <- sum(occ_true_stand_dbh[m,k,])/nyears
+    }
+    r_stand_dbh[m] <- sum(ots_stand_dbh[m,])
+  }
+  
+  ## Plot level richness:
+  for(i in 1:nsites){
+    for(y in 1:nyears){
+      r_year[i,y] <- sum(occ_true[i,,y])
+    }
+    r_plot[i] <- sum(r_year[i,])/nyears
   }
   
 }

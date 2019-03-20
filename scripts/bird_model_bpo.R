@@ -43,7 +43,7 @@ str(bpo)
 ## 4. The model ----------------------------------------------------------------
 
 ## Reduce forest variables to unique values at plot level:
-pld <- unique(bpo[, c(2,9:19)])
+plu <- unique(bpo[, c(2,9:19)])
 
 ## Create data arrays:
 
@@ -70,18 +70,22 @@ data <- list(nyears = length(unique(bpo$obs_year)),
              obs_time = obs_time,
              nvisits = nvisits,
              nseen = nseen,
-             canopy_density = scale(pld$PercentAbove5m),
-             understory_density = scale(pld$PercentBelow5m))
+             canopy_density = scale(plu$PercentAbove5m),
+             understory_density = scale(plu$PercentBelow5m),
+             stand_dbh = scale(plu$average_dbh_all_alive))
 
 ## Add prediction data:
 
 ## Understorey density:
 data$ud_pred <- seq(min(data$understory_density),
                     max(data$understory_density),
-                    0.05)
+                    0.5)
 
 ## Canopy density:
 data$cd_pred <- seq(min(data$canopy_density), max(data$canopy_density), 0.5)
+
+## Stand dbh:
+data$stand_dbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.5)
 
 str(data)
 
@@ -93,31 +97,35 @@ inits <-  list(list(occ_true = T1,
                     alpha_p_det = rep(0.4, data$nspecies),
                     beta_obs_time = 0.2,
                     alpha_mean = 5,
+                    sigma_alpha = 2,
                     beta_ud = rep(0, data$nspecies),
-                    sigma_alpha = 2)
+                    beta_cd = rep(0, data$nspecies),
+                    beta_stand_dbh = rep(0, data$nspecies))
                )
 
 model <- "scripts/JAGS/bird_JAGS_bpo.R"
 
 jm <- jags.model(model,
                  data = data,
-                 n.adapt = 5000, 
+                 n.adapt = 50000, 
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  100000
+burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 50000
-n.thin <- 5
+samples <- 20000
+n.thin <- 10
 
 zc <- coda.samples(jm,
                    variable.names = c("alpha_p_det",
                                       "beta_obs_time",
                                       "alpha_mean",
                                       "sigma_alpha",
-                                      "beta_ud"), 
+                                      "beta_ud",
+                                      "beta_cd",
+                                      "beta_stem_dbh"), 
                    n.iter = samples, 
                    thin = n.thin)
 
@@ -183,7 +191,10 @@ text(x = 1300, y = 1200, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## Produce predictions:
 zj_pred <- jags.samples(jm, 
-                        variable.names = c("richness"),
+                        variable.names = c("r_ud", 
+                                           "r_cd", 
+                                           "r_stand_dbh",
+                                           "r_plot"),
                         n.iter = samples, 
                         thin = n.thin)
 
@@ -191,8 +202,8 @@ zj_pred <- jags.samples(jm,
 
 png("figures/plot_richness_ud_bird.png", 1500, 1200, "px", res = 200)
 
-y <- summary(zj_pred$richness, quantile, c(.025,.5,.975))$stat
-x = backscale(data$ud_pred, data$understory_density)
+y <- summary(zj_pred$r_stand_dbh, quantile, c(.025,.5,.975))$stat
+x = backscale(data$stand_dbh_pred, data$stand_dbh)
 
 plot(x, y[2,], 
      col="blue", 
