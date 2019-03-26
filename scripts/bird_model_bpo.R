@@ -59,15 +59,11 @@ nseen <- acast(bpo[, c("plot", "species", "n_obs", "obs_year")],
                formula = plot ~ species ~ obs_year, 
                value.var = "n_obs")
 
-obs_time <- acast(unique(bpo[, c("species", "obs_year", "obs_time")]),
-                  formula = species ~ obs_year,
-                  value.var = "obs_time")
-
 ## Create model data set:
 data <- list(nyears = length(unique(bpo$obs_year)),
              nsites = nlevels(bpo$plot),
              nspecies = nlevels(bpo$species),
-             obs_time = obs_time,
+             obs_time = unique(bpo$obs_time),
              nvisits = nvisits,
              nseen = nseen,
              canopy_density = scale(plu$PercentAbove5m),
@@ -96,8 +92,11 @@ T1 <- ifelse(T1 > 0, 1, 0)
 inits <-  list(list(occ_true = T1,
                     alpha_p_det = rep(0.4, data$nspecies),
                     beta_obs_time = 0.2,
-                    alpha_mean = 5,
-                    sigma_alpha = 2,
+                    alpha = rep(5, data$nspecies),
+                    #sigma_year = rep(0.5, data$nspecies),
+                    year_effect = matrix(rep(0, (data$nspecies*data$nyears)), 
+                                         ncol = data$nyears, 
+                                         nrow = data$nspecies),
                     beta_ud = rep(0, data$nspecies),
                     beta_cd = rep(0, data$nspecies),
                     beta_stand_dbh = rep(0, data$nspecies))
@@ -111,21 +110,22 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  10000
+burn.in <-  100000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 20000
-n.thin <- 10
+samples <- 50000
+n.thin <- 50
 
 zc <- coda.samples(jm,
-                   variable.names = c("alpha_p_det",
+                   variable.names = c("p_det",
+                                      "alpha_p_det",
                                       "beta_obs_time",
-                                      "alpha_mean",
-                                      "sigma_alpha",
+                                      "alpha",
+                                      "tau_year",
                                       "beta_ud",
                                       "beta_cd",
-                                      "beta_stem_dbh"), 
+                                      "beta_stand_dbh"), 
                    n.iter = samples, 
                    thin = n.thin)
 
@@ -200,20 +200,20 @@ zj_pred <- jags.samples(jm,
 
 ## Plotting prediction & 95% CIs using polygon:
 
-png("figures/plot_richness_ud_bird.png", 1500, 1200, "px", res = 200)
+png("figures/plot_richness_stand_dbh_bird.png", 1500, 1200, "px", res = 200)
 
 y <- summary(zj_pred$r_stand_dbh, quantile, c(.025,.5,.975))$stat
 x = backscale(data$stand_dbh_pred, data$stand_dbh)
 
 plot(x, y[2,], 
      col="blue", 
-     xlab="Understory density", 
+     xlab="Stand dbh", 
      ylab="Richness", 
      cex = 1.4, 
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(20, 40)) 
+     ylim = c(15, 35)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")

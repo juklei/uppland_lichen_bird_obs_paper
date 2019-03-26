@@ -20,7 +20,7 @@ dir("data")
 
 occ <- read.csv("data/occ_2016to2018.csv")
 f_plot <- read.csv("data/forest_data_uppland_plot.csv")
-l_obs <- read.csv("data/lavar_uppland.csv")
+l_obs <- read.csv("data/Data_lavar_Almunge15_March_2019.csv")
 exclude <- read.csv("data/non_experiment_include.csv")
 ldm <- read.csv("data/long_distance_migrants.csv")
 
@@ -64,7 +64,7 @@ occ <- occ[!occ$species %in% c("bergk",
 
 # ## Exclude species only observed once:
 # occ <- occ[!occ$species %in% dimnames(table(
-#   occ$species)[table(occ$species) <= 1])[[]], ]
+#   occ$species)[table(occ$species) <= 10])[[]], ]
 
 ## Chose relevant columns for this analysis:
 occ <- droplevels(occ[, c("block", 
