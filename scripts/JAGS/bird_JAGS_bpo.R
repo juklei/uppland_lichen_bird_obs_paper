@@ -1,4 +1,4 @@
-## bird bpo model with a random intercept
+## bird bpo model with a fixed intercept
 ##
 ## First edit: 20190307
 ## Last edit: 20190314
