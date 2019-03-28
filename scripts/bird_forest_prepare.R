@@ -42,8 +42,11 @@ dev.off()
 ##    AHM book on p. 662. Instead of J indexed on site we want to index it on 
 ##    the species depending on wether it is long distance migrant or not.
 
-## Exclude all plots in occ which were no lichen inventory occured:
-occ <- occ[occ$plot %in% paste0("plot_", unique(l_obs$Plot.no.)), ]
+# ## Exclude plots in occ which were no lichen inventory occured:
+# occ <- occ[occ$plot %in% paste0("plot_", unique(l_obs$Plot.no.)), ]
+
+## Exclude plots which are spruce plantations:
+occ <- occ[!occ$plot %in% c("plot_31", "plot_116", "plot_117", "plot_119"), ]
 
 ## Exclude plots on which surveys were performed after treatments:
 occ <- merge(occ, exclude, by = "plot")

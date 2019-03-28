@@ -37,7 +37,7 @@ backscale <- function(pred_data, model_input_data) {
 
 dir("clean")
 
-bpo <- read.csv("clean/bpo_50.csv")
+bpo <- read.csv("clean/bpo_50_35m.csv")
 head(bpo)
 str(bpo)
 
@@ -167,6 +167,6 @@ zj_pred <- jags.samples(jm,
 
 zj_pred$plotnames <- levels(bpo$plot)
 
-save(zj_pred, file = "clean/rb_2018.rdata")
+save(zj_pred, file = "clean/rb_2018_all_35m.rdata")
 
 ## -------------------------------END-------------------------------------------

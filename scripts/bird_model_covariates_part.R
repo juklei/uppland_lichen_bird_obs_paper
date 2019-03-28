@@ -33,16 +33,25 @@ backscale <- function(pred_data, model_input_data) {
 
 ## 3. Load and explore data ----------------------------------------------------
 
-bpo <- read.csv("clean/bpo_50.csv")
+bpo <- read.csv("clean/bpo_50_35m.csv")
 
-load("clean/rb_2017.rdata")
+dir("clean")
+
+load("clean/rb_2016_all_35m.rdata")
+bpr_2016 <- zj_pred
+load("clean/rb_2017_all_35m.rdata")
 bpr_2017 <- zj_pred
-load("clean/rb_2018.rdata")
+load("clean/rb_2018_all_35m.rdata")
 bpr_2018 <- zj_pred
 
 ## 4. The model ----------------------------------------------------------------
 
 ## Create data set with all needed vars:
+
+d_2016 <- data.frame(r_mean = summary(bpr_2016$richness, mean)$stat,
+                     r_sd = summary(bpr_2016$richness, sd)$stat,
+                     obs_year = 2016,
+                     plot = bpr_2016$plotnames)
 
 d_2017 <- data.frame(r_mean = summary(bpr_2017$richness, mean)$stat,
                      r_sd = summary(bpr_2017$richness, sd)$stat,
@@ -54,7 +63,7 @@ d_2018 <- data.frame(r_mean = summary(bpr_2018$richness, mean)$stat,
                      obs_year = 2018,
                      plot = bpr_2018$plotnames)
 
-d_all <- rbind(d_2017, d_2018)
+d_all <- rbind(d_2016, d_2017, d_2018)
 
 d_all <- merge(d_all, unique(bpo[, c(2,9:19)]), all.x = TRUE, by = "plot")
 
@@ -68,6 +77,7 @@ data <- list(nobs = nrow(d_all),
              r_sd = d_all$r_sd,
              cd = scale(d_all$PercentAbove5m),
              ud = scale(d_all$PercentBelow5m),
+             nr_gran = scale(d_all$nr_gran),
              stand_dbh = scale(d_all$average_dbh_all_alive))
 
 ## Add prediction data:
@@ -85,6 +95,7 @@ str(data)
 
 inits <-  list(list(alpha = 15,
                     beta_ud = 0.5,
+                    beta_gran = 0.5,
                     sigma_year = 0.5,
                     sigma_site = 0.5)
                )
@@ -106,6 +117,7 @@ n.thin <- 5
 
 zc <- coda.samples(jm,
                    variable.names = c("beta_ud",
+                                      "beta_gran",
                                       "alpha",
                                       "richness",
                                       "tau_site",

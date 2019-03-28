@@ -1,12 +1,9 @@
-## model lichen richness in a hierarchical model with stem diameter and tree
-## species at the tree level and vegetation density and stand age at the plot
-## level. block is the grouping variable
+## model bird richness in a hierarchical model 
 ## 
+## First edit: 20190307
+## Last edit: 20190314
 ##
-## First edit: 20190125
-## Last edit: 20190222
-##
-## Author: Julian Klein, Matt Low
+## Author: Julian Klein
 
 ## 1. Clear environment and load libraries -------------------------------------
 
@@ -16,11 +13,13 @@ library(boot)
 library(rjags)
 library(coda)
 library(magrittr)
+library(reshape2)
+library(data.table)
 
 ## 2. Define or source functions used in this script ---------------------------
 
 dir.create("results")
-dir.create("results/ltr")
+dir.create("results/bpo")
 dir.create("figures")
 
 ## Print all rows for mcmc outputs
@@ -38,38 +37,35 @@ backscale <- function(pred_data, model_input_data) {
 
 dir("clean")
 
-ltr <- na.omit(read.csv("clean/ltr_T_10.csv"))
-head(ltr)
-str(ltr)
+bpo <- read.csv("clean/bpo_50.csv")
+head(bpo)
+str(bpo)
 
 ## 4. The model ----------------------------------------------------------------
 
-## Plot level explanatory variables need to be reduced to unique rows:
-plu <- unique(ltr[, c("plot", 
-                      "average_dbh_all_alive", 
-                      "PercentAbove5m", 
-                      "PercentBelow5m")])
-nrow(plu)
+## Calculate richness and total observation time per plot and year:
+bpo <- as.data.table(bpo)
+bpo$seen <- ifelse(bpo$n_obs > 0, 1, 0)
+bpo[, c("richness", "obs_time_total") := 
+      list(sum(seen), sum(obs_time)*max(n_visits)/nlevels(species)), 
+    by = c("plot", "obs_year")]
+
+## Reduce to unique rows:
+bpr <- unique(bpo[, c(2:4,9:19,21:22)])
 
 ## Create model data set:
-data <- list(nobs = nrow(ltr),
-             # block = as.numeric(ltr$block),
-             # nblock = length(unique(ltr$block)),
-             plot = as.numeric(ltr$plot),
-             nplot = length(unique(ltr$plot)),
-             richness = ltr$richness,
-             pine = ifelse(ltr$tree_sp == "Ps", 1, 0),
-             spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
-             stem_dbh = scale(ltr$tree_dbh),
-             stand_dbh = scale(plu$average_dbh_all_alive),
-             cd = scale(plu$PercentAbove5m),
-             ud = scale(plu$PercentBelow5m),
-             mu_p = 0.95)
+data <- list(nobs = nrow(bpr),
+             nsites = nlevels(bpr$plot),
+             plot = as.numeric(bpr$plot),
+             obs_year = as.numeric(bpr$obs_year),
+             years = unique(as.numeric(bpr$obs_year)),
+             richness = bpr$richness,
+             obs_time = bpr$obs_time_total,
+             cd = scale(log(bpr$PercentAbove5m)),
+             ud = scale(log(bpr$PercentBelow5m)),
+             stand_dbh = scale(bpr$average_dbh_all_alive))
 
 ## Add prediction data:
-
-## Stem dbh:
-data$stem_dbh_pred <- seq(min(data$stem_dbh), max(data$stem_dbh), 0.05)
 
 ## Understorey density:
 data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
@@ -77,24 +73,23 @@ data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
 ## Canopy density:
 data$cd_pred <- seq(min(data$cd), max(data$cd), 0.05)
 
+## Stand dbh:
+data$stand_dbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.5)
+
 str(data)
 
-inits <-  list(list(p = rep(0.8, data$nobs),
-                    richness_true = rep(8, data$nobs),
-                    # alpha_p = -1,
-                    # beta_p = 0.1,
-                    sigma_p = 0.05,
-                    beta_pine = 0.5,
-                    beta_spruce = 0.5,
-                    beta_stem_dbh = 0.5,
-                    alpha_plot = rep(2, data$nplot),
-                    sigma_plot = 2,
-                    alpha_plot_mean = 1,
+inits <-  list(list(richness_true = data$richness,
+                    alpha_p_det = 0.5,
+                    beta_obs_time = 0.5,
+                    alpha_plot_mean = 2,
                     beta_stand_dbh = 0.2,
-                    beta_cd = -0.2,
-                    beta_ud = -0.2))
+                    beta_cd = 0.2,
+                    beta_ud = 0.2,
+                    sigma_year = 2,
+                    sigma_plot = 2)
+               )
 
-model <- "scripts/JAGS/lichen_JAGS_ltr.R"
+model <- "scripts/JAGS/bird_JAGS_bpr.R"
 
 jm <- jags.model(model,
                  data = data,
@@ -106,44 +101,33 @@ burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 50000
-n.thin <- 50
+samples <- 10000
+n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c(# "alpha_p",
-                                      # "beta_p",
-                                      "sigma_p",
+                   variable.names = c("alpha_p_det",
+                                      "beta_obs_time",
                                       "alpha_plot_mean",
-                                      "beta_pine",
-                                      "beta_spruce",
-                                      "beta_stem_dbh",
-                                      "alpha_plot",
-                                      "sigma_plot",
                                       "beta_stand_dbh",
                                       "beta_cd",
-                                      "beta_ud"), 
+                                      "beta_ud",
+                                      "sigma_year",
+                                      "sigma_plot"), 
                    n.iter = samples, 
                    thin = n.thin)
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/ltr/parameters_lichen.txt")
+  write(., "results/bpo/parameters_bpr.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
-pdf("figures/plot_zc_lichen.pdf")
+pdf("figures/plot_zc_bpr.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/ltr/diagnostics_lichen.txt")
-
-gelman.diag(zc)
-
-## Useful functions:
-# ecdf(zj$mean_out)(0)
-# coda.matrix <- as.matrix(zc[[1]])
-# head(coda.matrix)
+  write(., "results/bpo/diagnostics_bpr.txt")
 
 ## Produce validation metrics: 
 zj_val <- jags.samples(jm, 
@@ -167,7 +151,7 @@ plot(zj_val$mean_richness,
      cex = .05)
 abline(0, 1)
 p <- summary(zj_val$p_mean, mean)
-text(x = 7, y = 10.5, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = 0.5, y = 0.66, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## Fit of variance:
 plot(zj_val$cv_richness, 
@@ -177,7 +161,7 @@ plot(zj_val$cv_richness,
      cex = .05)
 abline(0,1)
 p <- summary(zj_val$p_cv, mean)
-text(x = .25, y = .335, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = 1.5, y = 1.9, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## Overall fit:
 plot(zj_val$fit, 
@@ -187,37 +171,34 @@ plot(zj_val$fit,
      cex = .05)
 abline(0,1)
 p <- summary(zj_val$p_fit, mean)
-text(x = 480, y = 650, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+text(x = 1300, y = 1200, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## 6. Produce and export figures -----------------------------------------------
 
 ## Produce predictions:
 zj_pred <- jags.samples(jm, 
-                        variable.names = c("ud_mean", 
-                                           "cd_mean", 
-                                           "spruce_mean",
-                                           "pine_mean",
-                                           "dec_mean",
-                                           "richness_true"),
+                        variable.names = c("r_ud", 
+                                           "r_cd", 
+                                           "r_stand_dbh"),
                         n.iter = samples, 
                         thin = n.thin)
 
 ## Plotting prediction & 95% CIs using polygon:
 
-png("figures/rl_dbh.png", 1500, 1200, "px", res = 200)
+png("figures/bpr_ud.png", 1500, 1200, "px", res = 200)
 
-y <- summary(zj_pred$ud_mean, quantile, c(.025,.5,.975))$stat
-x = backscale(data$ud_pred, data$ud)
+y <- summary(zj_pred$r_ud, quantile, c(.025,.5,.975))$stat
+x = exp(backscale(data$ud_pred, data$ud))
 
 plot(x, y[2,], 
      col="blue", 
      xlab="Understory density", 
-     ylab="Richness per tree", 
+     ylab="Richness", 
      cex = 1.4, 
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(5, 15)) 
+     ylim = c(5, 20)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
@@ -225,12 +206,5 @@ lines(x,y[3,], lty="dashed", col="blue")
 dev.off()
 
 ## 7. Export data for fancy figures --------------------------------------------
-
-export_l <- zj_pred
-export_l$ud_pred <- backscale(data$ud_pred, data$ud)
-export_l$cd_pred <- backscale(data$cd_pred, data$cd)
-export_l$plotnames <- ltr$plot
-
-save(export_l, file = "clean/lichen_pred.rdata")
 
 ## -------------------------------END-------------------------------------------
