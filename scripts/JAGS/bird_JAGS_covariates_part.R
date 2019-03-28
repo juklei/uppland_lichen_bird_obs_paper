@@ -17,6 +17,7 @@ model{
     richness[i] <- alpha + 
                    site_effect[sites[i]] + 
                    year_effect[obs_year[i]] + 
+                   beta_gran*nr_gran[i,1] +
                    beta_ud*ud[i,1]
   }
   
@@ -32,6 +33,7 @@ model{
   
   alpha ~ dnorm(10, 0.001)
   beta_ud ~ dnorm(0.5, 0.001)
+  beta_gran ~ dnorm(0.5, 0.001)
   
   sigma_site ~ dgamma(0.001, 0.001)
   tau_site <- 1/sigma_site^2
