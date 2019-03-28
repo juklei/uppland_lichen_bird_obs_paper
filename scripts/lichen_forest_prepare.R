@@ -172,13 +172,13 @@ lof_tree <- merge(lof_tree,
                   by = c("plot", "circle_10m"),
                   allow.cartesian = TRUE)
 
-# ## Bin all deciduous tree species into trivial and complex:
-# levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
-#                            c("Ag", "Bp")] <- "Dc_trivial"
-# levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
-#                            c("Qr", "Pt")] <- "Dc_complex"
-# levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
-#                            c("Dc_complex", "Dc_trivial")] <- "Dc"
+## Bin all deciduous tree species into trivial and complex:
+levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
+                           c("Ag", "Bp")] <- "Dc_trivial"
+levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
+                           c("Qr", "Pt")] <- "Dc_complex"
+levels(lof_tree$tree_sp)[levels(lof_tree$tree_sp) %in%
+                           c("Dc_complex", "Dc_trivial")] <- "Dc"
 
 lof_plot <- merge(lof_plot,
                   f_subplot[, c(1:3, 6:9)],
@@ -234,11 +234,9 @@ lof_tree[lof_tree$buffer == 10 & lof_tree$Stem.S.Branches.B.T.Total == "T",
 lof_tree[lof_tree$buffer == 50 & lof_tree$Stem.S.Branches.B.T.Total == "T",
          c(11, 1, 8, 5:6, 9, 13, 14)] %>% write.csv(., "clean/ltr_T_50.csv")
 
-
 lof_tree[lof_tree$buffer == 10 & lof_tree$Stem.S.Branches.B.T.Total == "T",
          c(1, 7, 5:6, 9, 13, 14)] %>% write.csv(., "clean/ltpo_T_10.csv")
 lof_tree[lof_tree$buffer == 50 & lof_tree$Stem.S.Branches.B.T.Total == "T",
          c(1, 7, 5:6, 9, 13, 14)] %>% write.csv(., "clean/ltpo_T_50.csv")
-
 
 ## -------------------------------END-------------------------------------------

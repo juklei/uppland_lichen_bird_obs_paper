@@ -60,13 +60,10 @@ data <- list(nobs = nrow(ltr),
              richness = ltr$richness,
              pine = ifelse(ltr$tree_sp == "Ps", 1, 0),
              spruce = ifelse(ltr$tree_sp == "Pa", 1, 0),
-             aspen = ifelse(ltr$tree_sp == "Pt", 1, 0),
-             oak = ifelse(ltr$tree_sp == "Qr", 1, 0),
-             alder = ifelse(ltr$tree_sp == "Ag", 1, 0),
              stem_dbh = scale(ltr$tree_dbh),
              stand_dbh = scale(plu$average_dbh_all_alive),
-             canopy_density = scale(plu$PercentAbove5m),
-             understory_density = scale(plu$PercentBelow5m),
+             cd = scale(plu$PercentAbove5m),
+             ud = scale(plu$PercentBelow5m),
              mu_p = 0.95)
 
 ## Add prediction data:
@@ -75,12 +72,10 @@ data <- list(nobs = nrow(ltr),
 data$stem_dbh_pred <- seq(min(data$stem_dbh), max(data$stem_dbh), 0.05)
 
 ## Understorey density:
-data$ud_pred <- seq(min(data$understory_density),
-                    max(data$understory_density),
-                    0.05)
+data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
 
 ## Canopy density:
-data$cd_pred <- seq(min(data$canopy_density),  max(data$canopy_density), 0.05)
+data$cd_pred <- seq(min(data$cd), max(data$cd), 0.05)
 
 str(data)
 
@@ -91,16 +86,13 @@ inits <-  list(list(p = rep(0.8, data$nobs),
                     sigma_p = 0.05,
                     beta_pine = 0.5,
                     beta_spruce = 0.5,
-                    beta_aspen = 0.5,
-                    beta_oak = 0.5,
-                    beta_alder = 0.5,
                     beta_stem_dbh = 0.5,
                     alpha_plot = rep(2, data$nplot),
                     sigma_plot = 2,
                     alpha_plot_mean = 1,
                     beta_stand_dbh = 0.2,
-                    beta_cdens = -0.2,
-                    beta_udens = -0.2))
+                    beta_cd = -0.2,
+                    beta_ud = -0.2))
 
 model <- "scripts/JAGS/lichen_JAGS_ltr.R"
 
@@ -110,7 +102,7 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  1000000
+burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
@@ -121,18 +113,16 @@ zc <- coda.samples(jm,
                    variable.names = c(# "alpha_p",
                                       # "beta_p",
                                       "sigma_p",
+                                      "alpha_plot_mean",
                                       "beta_pine",
                                       "beta_spruce",
-                                      "beta_aspen",
-                                      "beta_oak",
-                                      "beta_alder",
                                       "beta_stem_dbh",
                                       "alpha_plot",
                                       "sigma_plot",
                                       "alpha_plot_mean",
                                       "beta_stand_dbh",
-                                      "beta_cdens",
-                                      "beta_udens"), 
+                                      "beta_cd",
+                                      "beta_ud"), 
                    n.iter = samples, 
                    thin = n.thin)
 
@@ -209,10 +199,7 @@ zj_pred <- jags.samples(jm,
                                            "cd_mean", 
                                            "spruce_mean",
                                            "pine_mean",
-                                           "aspen_mean",
-                                           "oak_mean",
-                                           "alder_mean",
-                                           "birch_mean"),
+                                           "dec_mean"),
                         n.iter = samples, 
                         thin = n.thin)
 
@@ -221,7 +208,7 @@ zj_pred <- jags.samples(jm,
 png("figures/plot_richness_ud.png", 1500, 1200, "px", res = 200)
 
 y <- summary(zj_pred$ud_mean, quantile, c(.025,.5,.975))$stat
-x = backscale(data$ud_pred, data$understory_density)
+x = backscale(data$ud_pred, data$ud)
 
 plot(x, y[2,], 
      col="blue", 
@@ -242,8 +229,8 @@ dev.off()
 
 export_l <- zj_pred
 export_l$stem_dbh_pred <- backscale(data$stem_dbh_pred, data$stem_dbh)
-export_l$ud_pred <- backscale(data$ud_pred, data$understory_density)
-export_l$cd_pred <- backscale(data$cd_pred, data$canopy_density)
+export_l$ud_pred <- backscale(data$ud_pred, data$ud)
+export_l$cd_pred <- backscale(data$cd_pred, data$cd)
 
 save(export_l, file = "clean/lichen_pred.rdata")
 
