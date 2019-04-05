@@ -146,7 +146,7 @@ b_occ <- unique(b_occ[, c("obs_year",
 
 ## Merge with forest data and export:
 
-bf_occ <- merge(b_occ, f_plot[, c(1,6:8,11:12,14:17,19:20)], by = "plot")
+bf_occ <- merge(b_occ, f_plot[, c(1,6:8,11:12,14:17,19:21)], by = "plot")
 
 dir.create("clean")
 

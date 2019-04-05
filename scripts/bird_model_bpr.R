@@ -51,7 +51,7 @@ bpo[, c("richness", "obs_time_total") :=
     by = c("plot", "obs_year")]
 
 ## Reduce to unique rows:
-bpr <- unique(bpo[, c(2:4,9:19,21:22)])
+bpr <- unique(bpo[, c(2:4,9:20,22:23)])
 
 ## Create model data set:
 data <- list(nobs = nrow(bpr),
@@ -60,9 +60,13 @@ data <- list(nobs = nrow(bpr),
              obs_year = as.numeric(bpr$obs_year),
              years = unique(as.numeric(bpr$obs_year)),
              richness = bpr$richness,
-             obs_time = bpr$obs_time_total,
+             obs_time = bpr$obs_time_total/60,
              cd = scale(log(bpr$PercentAbove5m)),
              ud = scale(log(bpr$PercentBelow5m)),
+             spruce = scale(bpr$nr_gran),
+             pine = scale(bpr$nr_tall),
+             dec = scale(bpr$nr_lov),
+             umbrella = scale(bpr$nr_skarm),
              stand_dbh = scale(bpr$average_dbh_all_alive))
 
 ## Add prediction data:
@@ -74,17 +78,20 @@ data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
 data$cd_pred <- seq(min(data$cd), max(data$cd), 0.05)
 
 ## Stand dbh:
-data$stand_dbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.5)
+data$stand_dbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.05)
 
 str(data)
 
 inits <-  list(list(richness_true = data$richness,
-                    alpha_p_det = 0.5,
-                    beta_obs_time = 0.5,
+                    param_obs_time = 0.5,
                     alpha_plot_mean = 2,
                     beta_stand_dbh = 0.2,
                     beta_cd = 0.2,
                     beta_ud = 0.2,
+                    beta_spruce = 0.2,
+                    beta_pine = 0.2,
+                    beta_dec = 0.2,
+                    beta_umbr = 0.2,
                     sigma_year = 2,
                     sigma_plot = 2)
                )
@@ -97,20 +104,23 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  10000
+burn.in <-  500000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 10000
-n.thin <- 5
+samples <- 50000
+n.thin <- 50
 
 zc <- coda.samples(jm,
-                   variable.names = c("alpha_p_det",
-                                      "beta_obs_time",
+                   variable.names = c("param_obs_time",
                                       "alpha_plot_mean",
                                       "beta_stand_dbh",
                                       "beta_cd",
                                       "beta_ud",
+                                      # "beta_spruce",
+                                      # "beta_pine",
+                                      # "beta_dec",
+                                      # "beta_umbr",
                                       "sigma_year",
                                       "sigma_plot"), 
                    n.iter = samples, 
@@ -198,7 +208,7 @@ plot(x, y[2,],
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(5, 20)) 
+     ylim = c(10, 30)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
