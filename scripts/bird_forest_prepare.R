@@ -46,7 +46,13 @@ dev.off()
 # occ <- occ[occ$plot %in% paste0("plot_", unique(l_obs$Plot.no.)), ]
 
 ## Exclude plots which are spruce plantations:
-occ <- occ[!occ$plot %in% c("plot_31", "plot_116", "plot_117", "plot_119"), ]
+occ <- occ[!occ$plot %in% c("plot_30", "plot_116", "plot_117", "plot_119"), ]
+
+## Exclude nature reserves:
+occ <- occ[!occ$plot %in% c("plot_201", "plot_202", "plot_203", "plot_204", 
+                            "plot_205", "plot_206", "plot_210", "plot_211",
+                            "plot_301", "plot_111", "plot_113", "plot_114",
+                            "plot_115", "plot_124"), ]
 
 ## Exclude plots on which surveys were performed after treatments:
 occ <- merge(occ, exclude, by = "plot")
@@ -60,14 +66,9 @@ occ <- occ[!occ$species %in% c("bergk",
                                "gravg",
                                "grona", 
                                "korp",
-                               "kraka",
                                "mard",
                                "mindb",
                                "spark"), ]
-
-# ## Exclude species only observed once:
-# occ <- occ[!occ$species %in% dimnames(table(
-#   occ$species)[table(occ$species) <= 10])[[]], ]
 
 ## Chose relevant columns for this analysis:
 occ <- droplevels(occ[, c("block", 

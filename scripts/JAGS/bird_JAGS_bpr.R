@@ -1,7 +1,7 @@
 ## bird bpr model
 ##
 ## First edit: 20190328
-## Last edit: 20190328
+## Last edit: 20190426
 ##
 ## Author: Julian Klein
 
@@ -9,10 +9,10 @@ model{
   
   ## Likelihood:
   
-  ## Observational level:
+  # Observational level:
   for(i in 1:nobs){
     richness[i] ~ dbin(p_det[i], richness_true[i])
-    # richness_sim[i] ~ dbin(p_det[i], richness_true[i])
+    richness_sim[i] ~ dbin(p_det[i], richness_true[i])
     p_det[i] <- obs_time[i]/(param_obs_time + obs_time[i])
   }
   
@@ -20,31 +20,31 @@ model{
   for(i in 1:nobs){
     richness_true[i] ~ dpois(lambda[i])
     log(lambda[i]) <- alpha_plot_mean + 
-                      plot_effect[plot[i]] + 
+                      site_effect[plot[i]] +
                       year_effect[obs_year[i]] +
                       beta_stand_dbh*stand_dbh[i,1] +
-                      beta_cd*cd[i,1] + 
-                      beta_ud*ud[i,1] #+
+                      beta_cd*cd[i,1] +
+                      beta_ud*ud[i,1]# +
                       # beta_spruce*spruce[i,1] +
                       # beta_pine*pine[i,1] +
                       # beta_umbr*umbrella[i,1] +
                       # beta_dec*dec[i,1]
   }
   
-  ## Group effects:
-  
-  for(j in 1:nsites){
-    plot_effect[j] ~ dnorm(0, tau_plot)
+  ## Site effect:
+  for(p in 1:nsites){
+    site_effect[p] ~ dnorm(0, tau_site)
   }
-  
+
+  ## Year effect:
   for(y in years){
     year_effect[y] ~ dnorm(0, tau_year)
   }
   
   ## Priors:
   
-  param_obs_time ~ dunif(0.05, 3)
-  alpha_plot_mean ~ dnorm(2, 0.01)
+  param_obs_time ~ dunif(60, 3600) # mu = 5min, sigma = 250min
+  alpha_plot_mean ~ dnorm(0, 0.001)
   beta_stand_dbh ~ dnorm(0, 0.001)
   beta_cd ~ dnorm(0, 0.001)
   beta_ud ~ dnorm(0, 0.001)
@@ -53,8 +53,8 @@ model{
   # beta_dec ~ dnorm(0, 0.001)
   # beta_umbr ~ dnorm(0, 00.1)
   
-  sigma_plot ~ dgamma(0.001, 0.001)
-  tau_plot <- 1/sigma_plot^2
+  sigma_site ~ dgamma(0.001, 0.001)
+  tau_site <- 1/sigma_site^2
 
   sigma_year ~ dgamma(0.001, 0.001)
   tau_year <- 1/sigma_year^2
@@ -85,18 +85,39 @@ model{
   
   # Understory density:
   for(m in 1:length(ud_pred)){
-    log(r_ud[m]) <- alpha_plot_mean + beta_ud*ud_pred[m]
+    log(r_ud[m]) <- beta_ud*ud_pred[m]
   }
-  
+
   # Canopy density:
   for(m in 1:length(cd_pred)){
-    log(r_cd[m]) <- alpha_plot_mean + beta_cd*cd_pred[m]
+    log(r_cd[m]) <- beta_cd*cd_pred[m]
   }
-  
+
   # Stand_dbh density:
   for(m in 1:length(stand_dbh_pred)){
-    log(r_stand_dbh[m]) <- alpha_plot_mean + beta_stand_dbh*stand_dbh_pred[m]
+    log(r_stand_dbh[m]) <- beta_stand_dbh*stand_dbh_pred[m]
   }
+  
+  # ## Number of deciduous:
+  # for(m in 1:length(dec_pred)){
+  #   log(r_dec[m]) <- alpha_plot_mean + beta_dec*dec_pred[m]
+  # }
+  # 
+  # ## Number of spruces:
+  # for(m in 1:length(spruce_pred)){
+  #   log(r_spruce[m]) <- alpha_plot_mean + beta_spruce*spruce_pred[m]
+  # }
+  # 
+  # ## Number of pines:
+  # for(m in 1:length(pine_pred)){
+  #   log(r_pine[m]) <- alpha_plot_mean + beta_pine*pine_pred[m]
+  # }
+  # 
+  # ## Number of umbrella spruces:
+  # for(m in 1:length(umbr_pred)){
+  #   log(r_umbr[m]) <- alpha_plot_mean + beta_umbr*umbr_pred[m]
+  # }
+  
   
 }
 

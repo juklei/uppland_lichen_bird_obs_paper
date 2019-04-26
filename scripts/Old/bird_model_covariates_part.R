@@ -1,7 +1,7 @@
 ## bird and lichen richness modeled simultaniously with covariates
 ## 
 ## First edit: 20190326
-## Last edit: 20190326
+## Last edit: 20190410
 ##
 ## Author: Julian Klein
 
@@ -33,37 +33,46 @@ backscale <- function(pred_data, model_input_data) {
 
 ## 3. Load and explore data ----------------------------------------------------
 
-bpo <- read.csv("clean/bpo_50_35m.csv")
+bpo <- read.csv("clean/bpo_50.csv")
 
 dir("clean")
 
-load("clean/rb_2016_all_35m.rdata")
-bpr_2016 <- zj_pred
-load("clean/rb_2017_all_35m.rdata")
-bpr_2017 <- zj_pred
-load("clean/rb_2018_all_35m.rdata")
-bpr_2018 <- zj_pred
+# load("clean/rb_2016_all_35m.rdata")
+# bpr_2016 <- zj_pred
+# load("clean/rb_2017_all_35m.rdata")
+# bpr_2017 <- zj_pred
+# load("clean/rb_2018_all_35m.rdata")
+# bpr_2018 <- zj_pred
+
+load("clean/rb_all_50m_obs_time.rdata")
 
 ## 4. The model ----------------------------------------------------------------
 
 ## Create data set with all needed vars:
 
-d_2016 <- data.frame(r_mean = summary(bpr_2016$richness, mean)$stat,
-                     r_sd = summary(bpr_2016$richness, sd)$stat,
-                     obs_year = 2016,
-                     plot = bpr_2016$plotnames)
+# d_2016 <- data.frame(r_mean = summary(bpr_2016$richness, mean)$stat,
+#                      r_sd = summary(bpr_2016$richness, sd)$stat,
+#                      obs_year = 2016,
+#                      plot = bpr_2016$plotnames)
+# 
+# d_2017 <- data.frame(r_mean = summary(bpr_2017$richness, mean)$stat,
+#                      r_sd = summary(bpr_2017$richness, sd)$stat,
+#                      obs_year = 2017,
+#                      plot = bpr_2017$plotnames)
+# 
+# d_2018 <- data.frame(r_mean = summary(bpr_2018$richness, mean)$stat,
+#                      r_sd = summary(bpr_2018$richness, sd)$stat,
+#                      obs_year = 2018,
+#                      plot = bpr_2018$plotnames)
+# 
+# d_all <- rbind(d_2016, d_2017, d_2018)
 
-d_2017 <- data.frame(r_mean = summary(bpr_2017$richness, mean)$stat,
-                     r_sd = summary(bpr_2017$richness, sd)$stat,
-                     obs_year = 2017,
-                     plot = bpr_2017$plotnames)
+d_all <- data.frame(r_mean = melt(summary(zj_pred$r_year, mean)$stat)[, 3],
+                    r_sd = melt(summary(zj_pred$r_year, sd)$stat)[, 3])
 
-d_2018 <- data.frame(r_mean = summary(bpr_2018$richness, mean)$stat,
-                     r_sd = summary(bpr_2018$richness, sd)$stat,
-                     obs_year = 2018,
-                     plot = bpr_2018$plotnames)
-
-d_all <- rbind(d_2016, d_2017, d_2018)
+d_all <- cbind(d_all, melt(zj_pred$plots_visited))
+d_all <- d_all[d_all$value == 1, 1:4]
+colnames(d_all)[3:4] <- c("plot", "obs_year")
 
 d_all <- merge(d_all, unique(bpo[, c(2,9:19)]), all.x = TRUE, by = "plot")
 
@@ -100,7 +109,7 @@ inits <-  list(list(alpha = 15,
                     sigma_site = 0.5)
                )
 
-model <- "scripts/JAGS/bird&lichen_combined_JAGS_pr.R"
+model <- "scripts/JAGS/bird_JAGS_covariates_part.R"
 
 jm <- jags.model(model,
                  data = data,
@@ -119,7 +128,6 @@ zc <- coda.samples(jm,
                    variable.names = c("beta_ud",
                                       "beta_gran",
                                       "alpha",
-                                      "richness",
                                       "tau_site",
                                       "tau_year"), 
                    n.iter = samples, 
@@ -127,16 +135,16 @@ zc <- coda.samples(jm,
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_combined.txt")
+  write(., "results/parameters_covariates_part_obs_time.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
-pdf("figures/plot_zc_combined.pdf")
+pdf("figures/plot_zc_covariates_part_obs_time.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_combined.txt")
+  write(., "results/diagnostics_covariates_part_obs_time.txt")
 
 ## 6. Produce and export figures -----------------------------------------------
 

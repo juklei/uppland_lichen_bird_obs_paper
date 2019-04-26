@@ -4,7 +4,7 @@
 ## 
 ##
 ## First edit: 20190125
-## Last edit: 20190222
+## Last edit: 20190426
 ##
 ## Author: Julian Klein, Matt Low
 
@@ -20,7 +20,6 @@ library(magrittr)
 ## 2. Define or source functions used in this script ---------------------------
 
 dir.create("results")
-dir.create("results/ltr")
 dir.create("figures")
 
 ## Print all rows for mcmc outputs
@@ -77,6 +76,9 @@ data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
 ## Canopy density:
 data$cd_pred <- seq(min(data$cd), max(data$cd), 0.05)
 
+## Canopy density:
+data$stand_dbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.05)
+
 str(data)
 
 inits <-  list(list(p = rep(0.8, data$nobs),
@@ -92,7 +94,35 @@ inits <-  list(list(p = rep(0.8, data$nobs),
                     alpha_plot_mean = 1,
                     beta_stand_dbh = 0.2,
                     beta_cd = -0.2,
-                    beta_ud = -0.2))
+                    beta_ud = -0.2),
+               list(p = rep(0.8, data$nobs),
+                    richness_true = rep(6, data$nobs),
+                    # alpha_p = -1,
+                    # beta_p = 0.1,
+                    sigma_p = 0.04,
+                    beta_pine = -0.5,
+                    beta_spruce = -0.5,
+                    beta_stem_dbh = -0.5,
+                    alpha_plot = rep(8, data$nplot),
+                    sigma_plot = 10,
+                    alpha_plot_mean = 10,
+                    beta_stand_dbh = -0.2,
+                    beta_cd = 0.2,
+                    beta_ud = 0.2),
+               list(p = rep(0.8, data$nobs),
+                    richness_true = rep(10, data$nobs),
+                    # alpha_p = -1,
+                    # beta_p = 0.1,
+                    sigma_p = 0.06,
+                    beta_pine = 0,
+                    beta_spruce = 0,
+                    beta_stem_dbh = 0,
+                    alpha_plot = rep(0, data$nplot),
+                    sigma_plot = 20,
+                    alpha_plot_mean = 50,
+                    beta_stand_dbh = 0,
+                    beta_cd = 0,
+                    beta_ud = 0))
 
 model <- "scripts/JAGS/lichen_JAGS_ltr.R"
 
@@ -100,14 +130,14 @@ jm <- jags.model(model,
                  data = data,
                  n.adapt = 5000, 
                  inits = inits, 
-                 n.chains = 1) 
+                 n.chains = 3) 
 
-burn.in <-  10000
+burn.in <-  100000
 
 update(jm, n.iter = burn.in) 
 
 samples <- 50000
-n.thin <- 50
+n.thin <- 25
 
 zc <- coda.samples(jm,
                    variable.names = c(# "alpha_p",
@@ -117,7 +147,6 @@ zc <- coda.samples(jm,
                                       "beta_pine",
                                       "beta_spruce",
                                       "beta_stem_dbh",
-                                      "alpha_plot",
                                       "sigma_plot",
                                       "beta_stand_dbh",
                                       "beta_cd",
@@ -127,7 +156,7 @@ zc <- coda.samples(jm,
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/ltr/parameters_lichen.txt")
+  write(., "results/parameters_lichen.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
@@ -136,7 +165,7 @@ plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/ltr/diagnostics_lichen.txt")
+  write(., "results/diagnostics_lichen.txt")
 
 gelman.diag(zc)
 
@@ -145,60 +174,62 @@ gelman.diag(zc)
 # coda.matrix <- as.matrix(zc[[1]])
 # head(coda.matrix)
 
-## Produce validation metrics: 
-zj_val <- jags.samples(jm, 
-                       variable.names = c("mean_richness", 
-                                          "mean_richness_sim",
-                                          "p_mean", 
-                                          "cv_richness", 
-                                          "cv_richness_sim", 
-                                          "p_cv", 
-                                          "fit", 
-                                          "fit_sim",
-                                          "p_fit"), 
-                       n.iter = samples, 
-                       thin = n.thin)
-
-## Fit of mean:
-plot(zj_val$mean_richness, 
-     zj_val$mean_richness_sim, 
-     xlab = "mean real", 
-     ylab = "mean simulated", 
-     cex = .05)
-abline(0, 1)
-p <- summary(zj_val$p_mean, mean)
-text(x = 7, y = 10.5, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
-
-## Fit of variance:
-plot(zj_val$cv_richness, 
-     zj_val$cv_richness_sim, 
-     xlab = "cv real", 
-     ylab = "cv simulated", 
-     cex = .05)
-abline(0,1)
-p <- summary(zj_val$p_cv, mean)
-text(x = .25, y = .335, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
-
-## Overall fit:
-plot(zj_val$fit, 
-     zj_val$fit_sim, 
-     xlab = "ssq real", 
-     ylab = "ssq simulated", 
-     cex = .05)
-abline(0,1)
-p <- summary(zj_val$p_fit, mean)
-text(x = 480, y = 650, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+# ## Produce validation metrics: 
+# zj_val <- jags.samples(jm, 
+#                        variable.names = c("mean_richness", 
+#                                           "mean_richness_sim",
+#                                           "p_mean", 
+#                                           "cv_richness", 
+#                                           "cv_richness_sim", 
+#                                           "p_cv", 
+#                                           "fit", 
+#                                           "fit_sim",
+#                                           "p_fit"), 
+#                        n.iter = samples, 
+#                        thin = n.thin)
+# 
+# ## Fit of mean:
+# plot(zj_val$mean_richness, 
+#      zj_val$mean_richness_sim, 
+#      xlab = "mean real", 
+#      ylab = "mean simulated", 
+#      cex = .05)
+# abline(0, 1)
+# p <- summary(zj_val$p_mean, mean)
+# text(x = 7, y = 10.5, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+# 
+# ## Fit of variance:
+# plot(zj_val$cv_richness, 
+#      zj_val$cv_richness_sim, 
+#      xlab = "cv real", 
+#      ylab = "cv simulated", 
+#      cex = .05)
+# abline(0,1)
+# p <- summary(zj_val$p_cv, mean)
+# text(x = .25, y = .335, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+# 
+# ## Overall fit:
+# plot(zj_val$fit, 
+#      zj_val$fit_sim, 
+#      xlab = "ssq real", 
+#      ylab = "ssq simulated", 
+#      cex = .05)
+# abline(0,1)
+# p <- summary(zj_val$p_fit, mean)
+# text(x = 480, y = 650, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
 ## 6. Produce and export figures -----------------------------------------------
 
 ## Produce predictions:
 zj_pred <- jags.samples(jm, 
-                        variable.names = c("ud_mean", 
-                                           "cd_mean", 
+                        variable.names = c("r_ud",
+                                           "r_cd",
+                                           "r_stand_dbh",
+                                           # "ud_mean", 
+                                           # "cd_mean", 
                                            "spruce_mean",
                                            "pine_mean",
-                                           "dec_mean",
-                                           "richness_true"),
+                                           "dec_mean"),
                         n.iter = samples, 
                         thin = n.thin)
 
@@ -206,8 +237,8 @@ zj_pred <- jags.samples(jm,
 
 png("figures/rl_dbh.png", 1500, 1200, "px", res = 200)
 
-y <- summary(zj_pred$ud_mean, quantile, c(.025,.5,.975))$stat
-x = backscale(data$ud_pred, data$ud)
+y <- summary(zj_pred$r_ud, quantile, c(.025,.5,.975))$stat-1
+x = data$ud_pred#backscale(data$ud_pred, data$ud)
 
 plot(x, y[2,], 
      col="blue", 
@@ -217,7 +248,7 @@ plot(x, y[2,],
      typ = "l", 
      tck = 0.03, 
      bty = "l", 
-     ylim = c(5, 15)) 
+     ylim = c(-0.5, 1)) 
 polygon(c(x, rev(x)), c(y[1,], rev(y[3,])), density = 19, col = "blue", angle = 45)
 lines(x,y[1,], lty="dashed", col="blue")
 lines(x,y[3,], lty="dashed", col="blue")
@@ -227,9 +258,9 @@ dev.off()
 ## 7. Export data for fancy figures --------------------------------------------
 
 export_l <- zj_pred
-export_l$ud_pred <- backscale(data$ud_pred, data$ud)
-export_l$cd_pred <- backscale(data$cd_pred, data$cd)
-export_l$plotnames <- ltr$plot
+export_l$ud_pred <- data$ud_pred#backscale(data$ud_pred, data$ud)
+export_l$cd_pred <- data$cd_pred#backscale(data$cd_pred, data$cd)
+export_l$stand_dbh_pred <- data$stand_dbh_pred#backscale(data$stand_dbh_pred, data$stand_dbh)
 
 save(export_l, file = "clean/lichen_pred.rdata")
 

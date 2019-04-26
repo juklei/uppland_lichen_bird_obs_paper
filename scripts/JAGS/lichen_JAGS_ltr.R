@@ -1,7 +1,7 @@
 ## lichen ltr model
 ##
 ## First edit: 20190129
-## Last edit: 20190222
+## Last edit: 20190426
 ##
 ## Author: Julian Klein, Matt Low
 
@@ -53,56 +53,67 @@ model{
   sigma_plot ~ dunif(0, 5)
   tau_plot <- 1/sigma_plot^2
   
-  ## Model validation:
-
-  ## Bayesian p-value:
-  mean_richness <- mean(richness[])
-  mean_richness_sim <- mean(richness_sim[])
-  p_mean <- step(mean_richness_sim - mean_richness)
-
-  ## Coefficient of variation:
-  cv_richness <- sd(richness[])/mean_richness
-  cv_richness_sim <- sd(richness_sim[])/mean_richness_sim
-  p_cv <- step(cv_richness - cv_richness_sim)
-
-  ## Model fit:
-  for(m in 1:nobs){
-    sq[m] <- (richness[m] - p[m]*richness_true[m])^2
-    sq_sim[m] <- (richness_sim[m] - p[m]*richness_true[m])^2
-  }
-
-  fit <- sum(sq[])
-  fit_sim <- sum(sq_sim[])
-  p_fit <- step(fit_sim - fit)
+  # ## Model validation:
+  # 
+  # ## Bayesian p-value:
+  # mean_richness <- mean(richness[])
+  # mean_richness_sim <- mean(richness_sim[])
+  # p_mean <- step(mean_richness_sim - mean_richness)
+  # 
+  # ## Coefficient of variation:
+  # cv_richness <- sd(richness[])/mean_richness
+  # cv_richness_sim <- sd(richness_sim[])/mean_richness_sim
+  # p_cv <- step(cv_richness - cv_richness_sim)
+  # 
+  # ## Model fit:
+  # for(m in 1:nobs){
+  #   sq[m] <- (richness[m] - p[m]*richness_true[m])^2
+  #   sq_sim[m] <- (richness_sim[m] - p[m]*richness_true[m])^2
+  # }
+  # 
+  # fit <- sum(sq[])
+  # fit_sim <- sum(sq_sim[])
+  # p_fit <- step(fit_sim - fit)
 
   ## Predictions:
 
-  ## Stem dbh:
-  for(n in 1:length(stem_dbh_pred)){
-    log(s_dbh_dec[n]) <- alpha_plot_mean + beta_stem_dbh*stem_dbh_pred[n]
-    log(s_dbh_ps[n]) <- alpha_plot_mean + beta_stem_dbh*stem_dbh_pred[n] + 
-                        beta_pine
-    log(s_dbh_pa[n]) <- alpha_plot_mean + beta_stem_dbh*stem_dbh_pred[n] + 
-                        beta_spruce
-    s_dbh_mean[n] <- (s_dbh_dec[n] + s_dbh_ps[n] + s_dbh_pa[n])/3
-  }
+  # ## Stem dbh:
+  # for(n in 1:length(stem_dbh_pred)){
+  #   log(s_dbh_dec[n]) <- alpha_plot_mean + beta_stem_dbh*stem_dbh_pred[n]
+  #   log(s_dbh_ps[n]) <- alpha_plot_mean + beta_stem_dbh*stem_dbh_pred[n] + 
+  #                       beta_pine
+  #   log(s_dbh_pa[n]) <- alpha_plot_mean + beta_stem_dbh*stem_dbh_pred[n] + 
+  #                       beta_spruce
+  #   s_dbh_mean[n] <- (s_dbh_dec[n] + s_dbh_ps[n] + s_dbh_pa[n])/3
+  # }
 
   ## Understorey density:
+  # for(o in 1:length(ud_pred)){
+  #   log(ud_dec[o]) <- alpha_plot_mean + beta_ud*ud_pred[o]
+  #   log(ud_ps[o]) <- alpha_plot_mean + beta_ud*ud_pred[o] + beta_pine
+  #   log(ud_pa[o]) <- alpha_plot_mean + beta_ud*ud_pred[o] + beta_spruce
+  #   ud_mean[o] <- (ud_dec[o] + ud_ps[o] + ud_pa[o])/3
+  # }
   for(o in 1:length(ud_pred)){
-    log(ud_dec[o]) <- alpha_plot_mean + beta_ud*ud_pred[o]
-    log(ud_ps[o]) <- alpha_plot_mean + beta_ud*ud_pred[o] + beta_pine
-    log(ud_pa[o]) <- alpha_plot_mean + beta_ud*ud_pred[o] + beta_spruce
-    ud_mean[o] <- (ud_dec[o] + ud_ps[o] + ud_pa[o])/3
+    log(r_ud[o]) <- beta_ud*ud_pred[o]
   }
 
   ## Canopy density:
+  # for(p in 1:length(cd_pred)){
+  #   log(cd_dec[p]) <- alpha_plot_mean + beta_cd*cd_pred[p]
+  #   log(cd_ps[p]) <- alpha_plot_mean + beta_cd*cd_pred[p] + beta_pine
+  #   log(cd_pa[p]) <- alpha_plot_mean + beta_cd*cd_pred[p] + beta_spruce
+  #   cd_mean[p] <- (cd_dec[p] + cd_ps[p] + cd_pa[p])/3
+  # }
   for(p in 1:length(cd_pred)){
-    log(cd_dec[p]) <- alpha_plot_mean + beta_cd*cd_pred[p]
-    log(cd_ps[p]) <- alpha_plot_mean + beta_cd*cd_pred[p] + beta_pine
-    log(cd_pa[p]) <- alpha_plot_mean + beta_cd*cd_pred[p] + beta_spruce
-    cd_mean[p] <- (cd_dec[p] + cd_ps[p] + cd_pa[p])/3
+    log(r_cd[p]) <- beta_cd*cd_pred[p]
   }
-
+  
+  ## Stand dbh:
+  for(q in 1:length(stand_dbh_pred)){
+    log(r_stand_dbh[q]) <- beta_stand_dbh*stand_dbh_pred[q]
+  }
+  
   ## Tree species:
   log(dec_mean) <- alpha_plot_mean
   log(pine_mean) <- alpha_plot_mean + beta_pine
