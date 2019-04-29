@@ -1,6 +1,6 @@
 ## Make nice figures for the lichen and bird comparison.
 ## 
-## First edit: 20190221 
+## First edit: 20190429
 ## Last edit: 
 ##
 ## Author: Julian Klein
@@ -59,8 +59,6 @@ y_btsp <- cbind(summary(export_b_trees$r_dec,
                 summary(export_b_trees$r_spruce, 
                         quantile, c(.025,.5,.975))$stat,
                 summary(export_b_trees$r_pine, 
-                        quantile, c(.025,.5,.975))$stat,
-                summary(export_b_trees$r_umbr, 
                         quantile, c(.025,.5,.975))$stat)
 
 d_btsp <- data.frame("r" = t(y_btsp)[,2],
@@ -68,16 +66,13 @@ d_btsp <- data.frame("r" = t(y_btsp)[,2],
                      "upper" = t(y_btsp)[,3],
                      "nr_trees" = c(export_b_trees$dec_pred, 
                                     export_b_trees$spruce_pred, 
-                                    export_b_trees$pine_pred,
-                                    export_b_trees$umbr_pred),
+                                    export_b_trees$pine_pred),
                      "tsp" = c(rep("deciduous", 
                                    length(export_b_trees$dec_pred)),
                                rep("spruce", 
                                    length(export_b_trees$spruce_pred)),
                                rep("pine", 
-                                   length(export_b_trees$pine_pred)),
-                               rep("umbrella", 
-                                   length(export_b_trees$umbr_pred))))
+                                   length(export_b_trees$pine_pred))))
 
 p1 <- ggplot(d_btsp, aes(x = nr_trees, y = r, fill = tsp, color = tsp))
 p2 <- geom_line(size = 2)
@@ -111,7 +106,7 @@ d_ud <- data.frame("r" = t(y_ud)[,2],
                                   rep("birds", 
                                       length(export_b_veg_age$ud_pred))))
 
-p1 <- ggplot(d_both_ud, aes(x = ud, y = r, fill = organism, color = organism))
+p1 <- ggplot(d_ud, aes(x = ud, y = r, fill = organism, color = organism))
 p2 <- geom_line(size = 2)
 p3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3)
 
@@ -143,7 +138,7 @@ d_cd <- data.frame("r" = t(y_cd)[,2],
                                   rep("birds", 
                                       length(export_b_veg_age$cd_pred))))
 
-q1 <- ggplot(d_both_cd, aes(x = cd, y = r, fill = organism, color = organism))
+q1 <- ggplot(d_cd, aes(x = cd, y = r, fill = organism, color = organism))
 q2 <- geom_line(size = 2)
 q3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3)
 
