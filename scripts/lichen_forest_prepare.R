@@ -51,6 +51,9 @@ dev.off()
 
 ## 4. Rearrange lichen data set to merge with forest data for analysis. -------- 
 
+## Exclude plot 119 as it is not included in this study:
+l_obs <- l_obs[l_obs$Plot.no. != 119, ]
+
 ## Change names of plot and circles for merging with forest data:
 
 colnames(l_obs)[2] <- "plot"

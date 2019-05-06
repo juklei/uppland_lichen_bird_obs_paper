@@ -23,12 +23,11 @@ model{
                       site_effect[plot[i]] +
                       year_effect[obs_year[i]] +
                       beta_stand_dbh*stand_dbh[i,1] +
-                      beta_cd*cd[i,1] +
-                      beta_ud*ud[i,1]# +
+                      # beta_cd*cd[i,1] +
+                      # beta_ud*ud[i,1] +
                       # beta_spruce*spruce[i,1] +
                       # beta_pine*pine[i,1] +
-                      # beta_umbr*umbrella[i,1] +
-                      # beta_dec*dec[i,1]
+                      beta_dec*dec[i,1]
   }
   
   ## Site effect:
@@ -43,16 +42,15 @@ model{
   
   ## Priors:
   
-  param_obs_time ~ dunif(60, 3600) # mu = 5min, sigma = 250min
+  param_obs_time ~ dunif(1, 60)
   alpha_plot_mean ~ dnorm(0, 0.001)
   beta_stand_dbh ~ dnorm(0, 0.001)
-  beta_cd ~ dnorm(0, 0.001)
-  beta_ud ~ dnorm(0, 0.001)
+  # beta_cd ~ dnorm(0, 0.001)
+  # beta_ud ~ dnorm(0, 0.001)
   # beta_spruce ~ dnorm(0, 0.001)
   # beta_pine ~ dnorm(0, 0.001)
-  # beta_dec ~ dnorm(0, 0.001)
-  # beta_umbr ~ dnorm(0, 00.1)
-  
+  beta_dec ~ dnorm(0, 0.001)
+
   sigma_site ~ dgamma(0.001, 0.001)
   tau_site <- 1/sigma_site^2
 
@@ -81,43 +79,22 @@ model{
   # fit_sim <- sum(sq_sim[])
   # p_fit <- step(fit_sim - fit)
   
-  ## Predictions:
-  
-  # Understory density:
-  for(m in 1:length(ud_pred)){
-    log(r_ud[m]) <- beta_ud*ud_pred[m]
-  }
-
-  # Canopy density:
-  for(m in 1:length(cd_pred)){
-    log(r_cd[m]) <- beta_cd*cd_pred[m]
-  }
-
-  # Stand_dbh density:
-  for(m in 1:length(stand_dbh_pred)){
-    log(r_stand_dbh[m]) <- beta_stand_dbh*stand_dbh_pred[m]
-  }
-  
-  # ## Number of deciduous:
-  # for(m in 1:length(dec_pred)){
-  #   log(r_dec[m]) <- alpha_plot_mean + beta_dec*dec_pred[m]
+  # ## Predictions:
+  # 
+  # # Understory density:
+  # for(m in 1:length(ud_pred)){
+  #   log(r_ud[m]) <- beta_ud*ud_pred[m]
   # }
   # 
-  # ## Number of spruces:
-  # for(m in 1:length(spruce_pred)){
-  #   log(r_spruce[m]) <- alpha_plot_mean + beta_spruce*spruce_pred[m]
+  # # Canopy density:
+  # for(m in 1:length(cd_pred)){
+  #   log(r_cd[m]) <- beta_cd*cd_pred[m]
   # }
   # 
-  # ## Number of pines:
-  # for(m in 1:length(pine_pred)){
-  #   log(r_pine[m]) <- alpha_plot_mean + beta_pine*pine_pred[m]
+  # # Stand_dbh density:
+  # for(m in 1:length(stand_dbh_pred)){
+  #   log(r_stand_dbh[m]) <- beta_stand_dbh*stand_dbh_pred[m]
   # }
-  # 
-  # ## Number of umbrella spruces:
-  # for(m in 1:length(umbr_pred)){
-  #   log(r_umbr[m]) <- alpha_plot_mean + beta_umbr*umbr_pred[m]
-  # }
-  
   
 }
 
