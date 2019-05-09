@@ -66,9 +66,14 @@ data <- list(nobs = nrow(ltr),
              mu_p = 0.95)
 
 ## Check for explanatory variable correlation:
+
 T1 <- plu
 T1$plot <- as.numeric(T1$plot)
-cor(merge(as.data.frame(data[c(2, 5:7)]), T1, by = "plot"))
+
+T2 <- data.frame("dec" = ifelse(data$pine == 0 & data$spruce == 0, 1, 0),
+                 data[c(2, 5:7)]) 
+
+cor(merge(T2, T1, by = "plot"))[-1, 5:8]
 
 ## Add prediction data:
 
