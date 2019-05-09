@@ -65,6 +65,11 @@ data <- list(nobs = nrow(ltr),
              ud = scale(plu$PercentBelow5m),
              mu_p = 0.95)
 
+## Check for explanatory variable correlation:
+T1 <- plu
+T1$plot <- as.numeric(T1$plot)
+cor(merge(as.data.frame(data[c(2, 5:7)]), T1, by = "plot"))
+
 ## Add prediction data:
 
 ## Stem dbh:

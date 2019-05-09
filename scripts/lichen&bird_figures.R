@@ -1,7 +1,7 @@
 ## Make nice figures for the lichen and bird comparison.
 ## 
 ## First edit: 20190429
-## Last edit: 
+## Last edit: 20190507
 ##
 ## Author: Julian Klein
 
@@ -45,7 +45,7 @@ g1 <- ggplot(d_ls, aes(x = species, y = richness))
 g2 <- geom_point(size = 2)
 g3 <- geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.3)
 
-png("figures/lichen_tsp.png", 10000, 7000, "px", res = 600)
+png("figures/lichen_tsp.png", 10000/4, 7000/4, "px", res = 600/4)
 
 g1 + g2 + g3 + theme_classic(40) + ylab("lichen richness per tree")
 
@@ -69,13 +69,17 @@ p1 <- ggplot(d_ud, aes(x = ud, y = r, fill = organism, color = organism))
 p2 <- geom_line(size = 2)
 p3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3)
 
-png("figures/both_ud.png", 10000, 7000, "px", res = 600)
+png("figures/both_ud.png", 10000/4, 7000/4, "px", res = 600/4)
 
 p1 + p2 + p3 +
   geom_vline(xintercept = 0, color = "black", linetype = "dashed")  + 
   geom_hline(yintercept = 0, color = "black", linetype = "dashed")  + 
   ylab("richness relative to the intercept") + 
   xlab("understory density") + 
+  scale_color_manual(breaks = c("birds", "lichens"), 
+                     values = c("red", "blue")) + 
+  scale_fill_manual(breaks = c("birds", "lichens"),
+                    values = c("red", "blue")) +
   theme_classic(40) +                  
   theme(legend.position = c(0.9, 0.75), 
         legend.title = element_blank(),
@@ -99,15 +103,54 @@ q1 <- ggplot(d_cd, aes(x = cd, y = r, fill = organism, color = organism))
 q2 <- geom_line(size = 2)
 q3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3)
 
-png("figures/both_cd.png", 10000, 7000, "px", res = 600)
+png("figures/both_cd.png", 10000/4, 7000/4, "px", res = 600/4)
 
 q1 + q2 + q3 +
   geom_vline(xintercept = 0, color = "black", linetype = "dashed")  + 
   geom_hline(yintercept = 0, color = "black", linetype = "dashed")  + 
   ylab("richness relative to the intercept") + 
   xlab("canopy density") + 
+  scale_color_manual(breaks = c("birds", "lichens"), 
+                     values = c("red", "blue")) + 
+  scale_fill_manual(breaks = c("birds", "lichens"),
+                    values = c("red", "blue")) +
   theme_classic(40) +                  
   theme(legend.position = c(0.9, 0.75), 
+        legend.title = element_blank(),
+        legend.key.size = unit(3, 'lines'))
+
+dev.off()
+
+## ud and cd combined:
+
+d_ud$cat <- "understory - below 5m"
+colnames(d_ud)[4] <- "veg_dens"
+d_cd$cat <- "canopy - above 5m"
+colnames(d_cd)[4] <- "veg_dens"
+d_both <- rbind(d_ud, d_cd)
+
+v1 <- ggplot(d_both, aes(x = veg_dens, 
+                         y = r, 
+                         fill = organism, 
+                         color = organism,
+                         linetype = cat))
+v2 <- geom_line(size = 2)
+v3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3)
+
+png("figures/both_both.png", 10000/4, 7000/4, "px", res = 600/4)
+
+v1 + v2 + v3 +
+  geom_vline(xintercept = 0, color = "black", linetype = "dashed")  + 
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed")  + 
+  ylab("richness relative to the intercept") + 
+  xlab("vegetation density") + 
+  scale_color_manual(breaks = c("birds", "lichens"), 
+                     values = c("red", "blue")) + 
+  scale_fill_manual(breaks = c("birds", "lichens"),
+                    values = c("red", "blue")) +
+  theme_classic(40) +                  
+  theme(legend.position = c(0.32, 0.9), 
+        legend.box = "horizontal",
         legend.title = element_blank(),
         legend.key.size = unit(3, 'lines'))
 
@@ -133,13 +176,17 @@ q1 <- ggplot(d_sdbh, aes(x = sdbh, y = r, fill = organism, color = organism))
 q2 <- geom_line(size = 2)
 q3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3)
 
-png("figures/both_sdbh.png", 10000, 7000, "px", res = 600)
+png("figures/both_sdbh.png", 10000/4, 7000/4, "px", res = 600/4)
 
 q1 + q2 + q3 +
   geom_vline(xintercept = 0, color = "black", linetype = "dashed")  + 
   geom_hline(yintercept = 0, color = "black", linetype = "dashed")  + 
   ylab("richness relative to the intercept") + 
-  xlab("stand dbh (stand age)") + 
+  xlab("stand dbh (stand age)")  + 
+  scale_color_manual(breaks = c("birds", "lichens"), 
+                     values = c("red", "blue")) + 
+  scale_fill_manual(breaks = c("birds", "lichens"),
+                    values = c("red", "blue")) +
   theme_classic(40) +                  
   theme(legend.position = c(0.2, 0.75), 
         legend.title = element_blank(),
@@ -160,13 +207,20 @@ b_2017 <- bpo[bpo$obs_year == 2017,
 combined <- merge(ltr[, c("plot", "richness")], b_2017, by = "plot")
 colnames(combined)[2] <- c("richness_lichens")
 
+## Pearson cc:
+combined <- as.data.table(combined)
+pcc <- cor(combined[, list("mean_richness_lichens" = mean(richness_lichens), 
+                           "richness_birds" = unique(richness_birds)), 
+                    by = plot][, 2:3])
+
 w1 <- ggplot(combined, aes(x = richness_birds, y = richness_lichens))
 w2 <- geom_point(size = 2)
 w3 <- stat_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE)
+w4 <- annotate("text", 8, 20, label = "pcc = -0.012", size = 10)
 
-png("figures/both.png", 10000, 7000, "px", res = 600)
+png("figures/both.png", 10000/4, 7000/4, "px", res = 600/4)
 
-w1 + w2 + w3 + 
+w1 + w2 + w4 +
   ylab("lichen richness per tree") + 
   xlab("bird richness per plot") + 
   theme_classic(40)
