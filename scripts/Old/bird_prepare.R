@@ -18,7 +18,8 @@ library(reshape)
 
 dir("data")
 
-occ <- read.csv("data/occ_2016to2018.csv")
+#occ <- read.csv("data/occ_2016to2018.csv")
+occ <- read.csv("data/occ_double_2017to2018.csv")
 f_plot <- read.csv("data/forest_data_uppland_plot.csv")
 l_obs <- read.csv("data/Data_lavar_Almunge15_March_2019.csv")
 exclude <- read.csv("data/non_experiment_include.csv")
@@ -32,7 +33,7 @@ dir.create("figures")
 
 png("figures/forest_correlations_plot.png", 3000, 1000, "px")
 
-corrgram(unique(na.omit(f_plot[, c(6:8, 11:22)])), 
+corrgram(unique(na.omit(f_plot[, c(6:13, 16:27)])), 
          lower.panel = panel.pie, upper.panel = panel.cor,
          cex.labels = 3)
 
@@ -74,7 +75,7 @@ occ <- occ[!occ$species %in% c("bergk",
 occ <- droplevels(occ[, c("block", 
                           "plot",
                           "visit", 
-                          "obs_year", 
+                          "obs_year",
                           "obs_time", 
                           "species")])
 
@@ -94,14 +95,14 @@ colnames(b_occ)[length(b_occ)] <- "species"
 ## Add obs = 1 to occ:
 occ$observed <- 1
 
-## Merge all b_occ with matching b_obs:
+## Merge all b_occ with matching b_occ:
 b_occ <- merge(b_occ, occ, all.x = TRUE, by = colnames(b_occ))
 
 ## NA in observed are actually non-observations, so they will become 0:
 b_occ$observed[is.na(b_occ$observed)] <- 0
 
 ## If everything went well the number of positive observations should be the 
-## nrow of b_obs:
+## nrow of b_occ:
 if(sum(b_occ$observed == 1) != nrow(occ)) print("You made a mistake!")
 
 ## All long distance migrants could be seen during at ´least three visits. Some
@@ -147,7 +148,7 @@ b_occ <- unique(b_occ[, c("obs_year",
 
 ## Merge with forest data and export:
 
-bf_occ <- merge(b_occ, f_plot[, c(1,6:8,11:12,14:17,19:21)], by = "plot")
+bf_occ <- merge(b_occ, f_plot[, c(1,8:13,16:17,19:20,25:26)], by = "plot")
 
 dir.create("clean")
 

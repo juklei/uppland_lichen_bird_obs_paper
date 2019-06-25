@@ -1,0 +1,153 @@
+## bird and lichen richness modeled simultaniously with covariates
+## 
+## First edit: 20190326
+## Last edit: 20190620
+##
+## Author: Julian Klein
+
+## 1. Clear environment and load libraries -------------------------------------
+
+rm(list = ls())
+
+library(boot)
+library(rjags)
+library(coda)
+library(magrittr)
+library(reshape2)
+
+## 2. Define or source functions used in this script ---------------------------
+
+dir.create("results")
+dir.create("figures")
+
+## Print all rows for mcmc outputs
+options(max.print = 10E5)
+
+## Backscale function
+backscale <- function(pred_data, model_input_data) {
+  
+  pred_data*attr(model_input_data, 'scaled:scale') + 
+    attr(model_input_data, 'scaled:center')
+  
+}
+
+## 3. Load and explore data ----------------------------------------------------
+
+bpo <- read.csv("clean/bpo_double_50.csv")
+
+dir("clean")
+
+load("clean/rb_2017.rdata")
+bpr_2017 <- zj_pred
+load("clean/rb_2018.rdata")
+bpr_2018 <- zj_pred
+load("clean/lichen_richness.rdata")
+
+## 4. The model ----------------------------------------------------------------
+
+## Create data set with all needed vars:
+
+b_2017 <- data.frame(r_mean_sc = summary(bpr_2017$scaled_rb, mean)$stat,
+                     r_sd_sc = summary(bpr_2017$scaled_rb, sd)$stat,
+                     r_mean = summary(bpr_2017$richness, mean)$stat,
+                     r_sd = summary(bpr_2017$richness, sd)$stat,
+                     obs_year = 2017,
+                     organsim = "bird",
+                     plot = bpr_2017$plotnames)
+
+l_2018 <- data.frame(r_mean_sc = apply(zj_lichen$scaled_rl, 2, mean),
+                     r_sd_sc = apply(zj_lichen$scaled_rl, 2, sd),
+                     r_mean = apply(zj_lichen$plot_richness, 2, mean),
+                     r_sd = apply(zj_lichen$plot_richness, 2, sd),
+                     obs_year = 2018,
+                     organsim = "lichen",
+                     plot = zj_lichen$plotnames)
+
+
+d_all <- rbind(b_2017, l_2018)
+d_all <- merge(d_all, unique(bpo[, c(2,8:13,18)]), all.x = TRUE, by = "plot")
+
+## Make response matrices:
+r_mean <- acast(d_all, formula = plot ~ organsim, value.var = "r_mean_sc")
+r_sd <- acast(d_all, formula = plot ~ organsim, value.var = "r_sd_sc")
+
+## Unique plot data:
+plu <- unique(d_all[, c(1,8:14)])
+
+## Create model data set:
+data <- list(nobs = nrow(d_all),
+             nsites = nlevels(d_all$plot),
+             org = ifelse(d_all$organsim == "lichen", 1, 0),
+             r_mean = d_all$r_mean_sc,#r_mean,
+             r_sd = d_all$r_sd_sc,#r_sd,
+             cd = scale(d_all$PercentAbove5m),
+             ud = scale(d_all$PercentBelow5m),
+             stand_dbh = scale(d_all$average_dbh_all_alive))
+
+## Add prediction data:
+
+## Understorey density:
+data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
+
+## Canopy density:
+data$cd_pred <- seq(min(data$cd), max(data$cd), 0.05)
+
+## Stand dbh:
+data$stand_dbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.05)
+
+str(data)
+
+inits <-  list(list(alpha = 15,#c(15, 15),
+                    beta_org = 0,
+                    beta_ud = 0.5,#c(0.5, 0.5),
+                    beta_cd = 0.5,#c(0.5, 0.5),
+                    beta_sdbh = 0.5,#c(0.5, 0.5)
+                    int_ud = 0.1,
+                    int_cd = 0.2,
+                    int_sdbh = 0.1
+                    )
+               )
+
+model <- "scripts/JAGS/lichen&bird_JAGS_combined.R"
+
+jm <- jags.model(model,
+                 data = data,
+                 n.adapt = 5000, 
+                 inits = inits, 
+                 n.chains = 1) 
+
+burn.in <-  10000
+
+update(jm, n.iter = burn.in) 
+
+samples <- 10000
+n.thin <- 5
+
+zc <- coda.samples(jm,
+                   variable.names = c("alpha",
+                                      "beta_org",
+                                      "beta_ud",
+                                      "beta_cd",
+                                      "beta_sdbh",
+                                      "int_ud",
+                                      "int_cd",
+                                      "int_sdbh"), 
+                   n.iter = samples, 
+                   thin = n.thin)
+
+## Export parameter estimates:
+capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
+  write(., "results/parameters_lb_combined.txt")
+
+## 5. Validate the model and export validation data and figures ----------------
+
+pdf("figures/plot_zc_lb_combined.pdf")
+plot(zc)
+dev.off()
+
+capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
+  write(., "results/diagnostics_lb_combined.txt")
+
+## 6. Produce and export data for fancy figures --------------------------------
+
+## -------------------------------END-------------------------------------------

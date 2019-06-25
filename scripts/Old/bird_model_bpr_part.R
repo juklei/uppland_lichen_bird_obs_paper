@@ -1,7 +1,7 @@
 ## model bird richness in a hierarchical model 
 ## 
 ## First edit: 20190307
-## Last edit: 20190426
+## Last edit: 20190617
 ##
 ## Author: Julian Klein
 
@@ -23,14 +23,6 @@ dir.create("figures")
 
 ## Print all rows for mcmc outputs
 options(max.print = 10E5)
-
-## Backscale function
-backscale <- function(pred_data, model_input_data) {
-  
-  pred_data*attr(model_input_data, 'scaled:scale') + 
-    attr(model_input_data, 'scaled:center')
-  
-}
 
 ## 3. Load and explore data ----------------------------------------------------
 
@@ -59,106 +51,49 @@ data <- list(nobs = nrow(bpr),
              obs_year = as.numeric(bpr$obs_year),
              years = unique(as.numeric(bpr$obs_year)),
              richness = bpr$richness,
-             obs_time = bpo$obs_time,
-             cd = scale(log(bpr$PercentAbove5m)),
-             ud = scale(log(bpr$PercentBelow5m)),
-             spruce = scale(bpr$nr_gran/bpr$nr_all_alive),
-             pine = scale(bpr$nr_tall/bpr$nr_all_alive),
-             dec = scale(bpr$nr_lov/bpr$nr_all_alive),
-             stand_dbh = scale(bpr$average_dbh_all_alive))
-
-## Check for explanatory variable correlation:
-cor(as.data.frame(data[8:13]))
-
-## Add prediction data:
-
-## Understorey density:
-data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
-
-## Canopy density:
-data$cd_pred <- seq(min(data$cd), max(data$cd), 0.05)
-
-## Stand dbh:
-data$stand_dbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.05)
+             obs_time = bpo$obs_time)
 
 str(data)
 
 inits <-  list(list(richness_true = data$richness,
-                    param_obs_time = 50,
-                    alpha_plot_mean = 2,
-                    beta_stand_dbh = 0.2,
-                    beta_cd = 0.2,
-                    beta_ud = 0.2,
-                    beta_spruce = 0.2,
-                    beta_pine = 0.2,
-                    beta_dec = 0.2,
-                    sigma_year = 2,
-                    sigma_site = 2),
-               list(richness_true = data$richness,
-                    param_obs_time = 30,
-                    alpha_plot_mean = 5,
-                    beta_stand_dbh = 0,
-                    beta_cd = 0,
-                    beta_ud = 0,
-                    beta_spruce = 0,
-                    beta_pine = 0,
-                    beta_dec = 0,
-                    sigma_year = 5,
-                    sigma_site = 5),
-               list(richness_true = data$richness,
-                    param_obs_time = 10,
-                    alpha_plot_mean = 0,
-                    beta_stand_dbh = -0.2,
-                    beta_cd = -0.2,
-                    beta_ud = -0.2,
-                    beta_spruce = -0.2,
-                    beta_pine = -0.2,
-                    beta_dec = -0.2,
-                    sigma_year = 1,
-                    sigma_site = 1)
-               )
+                    plot_richness = rep(5, data$nsites),
+                    param_obs_time = 5,
+                    sigma_year = 2))
 
-model <- "scripts/JAGS/bird_JAGS_bpr.R"
+model <- "scripts/JAGS/bird_JAGS_bpr_part.R"
 
 jm <- jags.model(model,
                  data = data,
                  n.adapt = 5000, 
                  inits = inits, 
-                 n.chains = 3) 
+                 n.chains = 1) 
 
-burn.in <-  100000
+burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 50000
-n.thin <- 25
+samples <- 1000
+n.thin <- 5
 
 zc <- coda.samples(jm,
                    variable.names = c("param_obs_time",
-                                      "alpha_plot_mean",
-                                      "beta_stand_dbh",
-                                      "beta_cd",
-                                      "beta_ud",
-                                      "beta_spruce",
-                                      "beta_pine",
-                                      "beta_dec",
-                                      "sigma_year",
-                                      "sigma_site"), 
+                                      "plot_richness",
+                                      "sigma_year"), 
                    n.iter = samples, 
                    thin = n.thin)
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_bpr_dec.txt")
+  write(., "results/parameters_bpr_part.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
-pdf("figures/plot_zc_bpr_dec.pdf")
+pdf("figures/plot_zc_bpr_part.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_bpr_dec.txt")
+  write(., "results/diagnostics_bpr_part.txt")
 
 # ## Produce validation metrics:
 # zj_val <- jags.samples(jm,

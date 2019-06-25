@@ -48,12 +48,12 @@ model{
   mean_nseen <- mean(nseen[,])
   mean_nseen_sim <- mean(nseen_sim[,])
   p_mean <- step(mean_nseen_sim - mean_nseen)
-  
+
   ## Coefficient of variation:
   cv_nseen <- sd(nseen[,])/mean_nseen
   cv_nseen_sim <- sd(nseen_sim[,])/mean_nseen_sim
   p_cv <- step(cv_nseen - cv_nseen_sim)
-  
+
   ## Model fit:
   for(k in 1:nspecies){
     for(i in 1:nsites){
@@ -61,7 +61,7 @@ model{
       sq_sim[i,k] <- (nseen_sim[i,k] - occ_true[i,k]*p_det[k]*nvisits[i,k])^2
     }
   }
-  
+
   fit <- sum(sq[,])
   fit_sim <- sum(sq_sim[,])
   p_fit <- step(fit_sim - fit)
@@ -75,6 +75,7 @@ model{
   for(i in 1:nsites){
     richness[i] ~ sum(occ_true[i,])
   }
+  scaled_rb <- (richness - mean(richness))/sd(richness)
   
 }
 
