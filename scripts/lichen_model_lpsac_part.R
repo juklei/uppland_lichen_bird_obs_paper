@@ -64,21 +64,19 @@ model <- "scripts/JAGS/lichen_JAGS_lpsac_part.R"
 
 jm <- jags.model(model,
                  data = data,
-                 n.adapt = 1000, 
+                 n.adapt = 5000, 
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  1000
+burn.in <-  10000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 1000
+samples <- 10000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c("plot_richness",
-                                      "lambda_rich",
-                                      "lambda_sat"),
+                   variable.names = "plot_richness",
                    n.iter = samples, 
                    thin = n.thin)
 
@@ -97,7 +95,7 @@ capture.output(raftery.diag(zc), heidel.diag(zc)) %>%
 
 ## Produce validation metrics:
 zj_val <- jags.samples(jm,
-                       variable.names = c("obs_pred"),
+                       variable.names = "obs_pred",
                        n.iter = 1000,
                        thin = 10)
 
@@ -122,8 +120,8 @@ for(i in 1:data$nplot) {
        xlab = "tree nr", 
        ylab = "richness", 
        typ = "l")
-  lines(x, c(0,median_mean[,i]), col="blue")
-  lines(x, c(0, ci_min[,i]), lty="dashed", col="blue")
+  lines(x, c(0,median_mean[,i]), col = "blue")
+  lines(x, c(0, ci_min[,i]), lty = "dashed", col = "blue")
 
   ## Real data:
   points(rep(which(!is.na(sad[,1,i])), dim(sad)[2]),

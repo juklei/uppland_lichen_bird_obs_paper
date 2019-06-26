@@ -55,6 +55,14 @@ b_2017 <- data.frame(r_mean_sc = summary(bpr_2017$scaled_rb, mean)$stat,
                      organsim = "bird",
                      plot = bpr_2017$plotnames)
 
+b_2018 <- data.frame(r_mean_sc = summary(bpr_2018$scaled_rb, mean)$stat,
+                     r_sd_sc = summary(bpr_2018$scaled_rb, sd)$stat,
+                     r_mean = summary(bpr_2018$richness, mean)$stat,
+                     r_sd = summary(bpr_2018$richness, sd)$stat,
+                     obs_year = 2018,
+                     organsim = "bird",
+                     plot = bpr_2018$plotnames)
+
 l_2018 <- data.frame(r_mean_sc = apply(zj_lichen$scaled_rl, 2, mean),
                      r_sd_sc = apply(zj_lichen$scaled_rl, 2, sd),
                      r_mean = apply(zj_lichen$plot_richness, 2, mean),
@@ -62,17 +70,17 @@ l_2018 <- data.frame(r_mean_sc = apply(zj_lichen$scaled_rl, 2, mean),
                      obs_year = 2018,
                      organsim = "lichen",
                      plot = zj_lichen$plotnames)
-
+#l_2018 <- droplevels(l_2018[l_2018$plot %in% b_2018$plot, ])
 
 d_all <- rbind(b_2017, l_2018)
 d_all <- merge(d_all, unique(bpo[, c(2,8:13,18)]), all.x = TRUE, by = "plot")
 
-## Make response matrices:
-r_mean <- acast(d_all, formula = plot ~ organsim, value.var = "r_mean_sc")
-r_sd <- acast(d_all, formula = plot ~ organsim, value.var = "r_sd_sc")
-
-## Unique plot data:
-plu <- unique(d_all[, c(1,8:14)])
+# ## Make response matrices:
+# r_mean <- acast(d_all, formula = plot ~ organsim, value.var = "r_mean_sc")
+# r_sd <- acast(d_all, formula = plot ~ organsim, value.var = "r_sd_sc")
+# 
+# ## Unique plot data:
+# plu <- unique(d_all[, c(1,8:14)])
 
 ## Create model data set:
 data <- list(nobs = nrow(d_all),
@@ -80,8 +88,8 @@ data <- list(nobs = nrow(d_all),
              org = ifelse(d_all$organsim == "lichen", 1, 0),
              r_mean = d_all$r_mean_sc,#r_mean,
              r_sd = d_all$r_sd_sc,#r_sd,
-             cd = scale(d_all$PercentAbove5m),
-             ud = scale(d_all$PercentBelow5m),
+             cd = scale(d_all$PercentAbove7m),
+             ud = scale(d_all$PercentBelow7m),
              stand_dbh = scale(d_all$average_dbh_all_alive))
 
 ## Add prediction data:
@@ -93,7 +101,7 @@ data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
 data$cd_pred <- seq(min(data$cd), max(data$cd), 0.05)
 
 ## Stand dbh:
-data$stand_dbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.05)
+data$sdbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.05)
 
 str(data)
 
@@ -137,17 +145,37 @@ zc <- coda.samples(jm,
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_lb_combined.txt")
+  write(., "results/parameters_lb_combined_2017_5m_sdbh.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
-pdf("figures/plot_zc_lb_combined.pdf")
+pdf("figures/plot_zc_lb_combined_2017_5m_sdbh.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_lb_combined.txt")
+  write(., "results/diagnostics_lb_combined_2017_5m_sdbh.txt")
 
 ## 6. Produce and export data for fancy figures --------------------------------
+
+zj_pred <- jags.samples(jm,
+                        variable.names = c("rb_ud", 
+                                           "rl_ud", 
+                                           "rb_cd", 
+                                           "rl_cd"#, 
+                                           #"rb_sdbh", 
+                                           #"rl_sdbh"
+                                           ),
+                        n.iter = samples,
+                        thin = n.thin)
+
+zj_pred_2017 <- zj_pred
+zj_pred_2017$ud <- data$ud_pred#backscale(data$ud_pred, data$ud)
+zj_pred_2017$cd <- data$cd_pred#backscale(data$cd_pred, data$cd)
+save(zj_pred_2017, file = "clean/combined_pred_2017_7m.rdata")
+
+zj_pred_sdbh <- zj_pred
+zj_pred_2017_sdbh <- backscale(data$sdbh_pred, data$stand_dbh)
+save(zj_pred_2017_sdbh, file = "clean/combined_pred_2017_sdbh.rdata")
 
 ## -------------------------------END-------------------------------------------

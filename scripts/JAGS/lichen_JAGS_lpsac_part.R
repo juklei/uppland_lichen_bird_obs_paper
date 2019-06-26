@@ -1,7 +1,7 @@
 ## lichen lpsac model
 ##
 ## First edit: 20190605
-## Last edit: 201906118
+## Last edit: 20190625
 ##
 ## Author: Julian Klein
 

@@ -39,17 +39,17 @@ model{
   
   # Understory density:
   for(m in 1:length(ud_pred)){
-    rb_ud[m] <- alpha + beta_ud*ud_pred[m]
-    rl_ud[m] <- alpha + beta_org + (beta_ud + int_ud)*ud_pred[m]
+    rb_ud[m] <- beta_ud*ud_pred[m]
+    rl_ud[m] <- (beta_ud + int_ud)*ud_pred[m]
   }
   
   # Canopyy density:
   for(m in 1:length(cd_pred)){
-    rb_cd[m] <- alpha + beta_cd*cd_pred[m]
-    rl_cd[m] <- alpha + beta_org + (beta_cd + int_cd)*cd_pred[m]
+    rb_cd[m] <- beta_cd*cd_pred[m]
+    rl_cd[m] <- (beta_cd + int_cd)*cd_pred[m]
   }
   
-  # Canopyy density:
+  # Stand age:
   for(m in 1:length(sdbh_pred)){
     rb_sdbh[m] <- alpha + beta_sdbh*sdbh_pred[m]
     rl_sdbh[m] <- alpha + beta_org + (beta_sdbh + int_sdbh)*sdbh_pred[m]
