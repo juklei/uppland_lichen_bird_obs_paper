@@ -2,7 +2,7 @@
 ## script.
 ##
 ## First edit: 20190306
-## Last edit: 20190306
+## Last edit: 20190619
 ##
 ## Author: Julian Klein
 
@@ -18,8 +18,7 @@ library(reshape)
 
 dir("data")
 
-#occ <- read.csv("data/occ_2016to2018.csv")
-occ <- read.csv("data/occ_double_2017to2018.csv")
+occ <- read.csv("data/occ_double_2017to2019.csv")
 f_plot <- read.csv("data/forest_data_uppland_plot.csv")
 l_obs <- read.csv("data/Data_lavar_Almunge15_March_2019.csv")
 exclude <- read.csv("data/non_experiment_include.csv")
@@ -43,8 +42,10 @@ dev.off()
 ##    AHM book on p. 662. Instead of J indexed on site we want to index it on 
 ##    the species depending on wether it is long distance migrant or not.
 
-# ## Exclude plots in occ which were no lichen inventory occured:
-# occ <- occ[occ$plot %in% paste0("plot_", unique(l_obs$Plot.no.)), ]
+occ <- occ[occ$obs_year != 2019, ]
+
+## Exclude plots in occ which were no lichen inventory occured:
+occ <- occ[occ$plot %in% paste0("plot_", unique(l_obs$Plot.no.)), ]
 
 ## Exclude plots which are spruce plantations:
 occ <- occ[!occ$plot %in% c("plot_30", "plot_116", "plot_117", "plot_119"), ]
@@ -75,8 +76,8 @@ occ <- occ[!occ$species %in% c("bergk",
 occ <- droplevels(occ[, c("block", 
                           "plot",
                           "visit", 
+                          "sampling_period",
                           "obs_year",
-                          "obs_time", 
                           "species")])
 
 ## Make data set so we have all possible combinations of all visits
@@ -84,8 +85,8 @@ occ <- droplevels(occ[, c("block",
 b_occ <- expand.grid.df(unique(occ[, c("block", 
                                        "plot",
                                        "visit",
-                                       "obs_year", 
-                                       "obs_time")]), 
+                                       "sampling_period",
+                                       "obs_year")]), 
                         as.data.frame(unique(occ$species)))
 colnames(b_occ)[length(b_occ)] <- "species"
 
@@ -101,15 +102,12 @@ b_occ <- merge(b_occ, occ, all.x = TRUE, by = colnames(b_occ))
 ## NA in observed are actually non-observations, so they will become 0:
 b_occ$observed[is.na(b_occ$observed)] <- 0
 
-## If everything went well the number of positive observations should be the 
-## nrow of b_occ:
-if(sum(b_occ$observed == 1) != nrow(occ)) print("You made a mistake!")
+## All long distance migrants could be seen during at ´least 6 visits. Some
+## were seen before, already during the third_fourth/ one. In that case all 
+## plots in block in which that species was seen get one more visit for that 
+## species.
 
-## All long distance migrants could be seen during at ´least three visits. Some
-## were seen before, already during the second one. In that case all plots in 
-## block in which that species was seen get one more visit for that species.
-
-b_occ$n_visits <- ifelse(b_occ$species %in% ldm$species, 3, 5)
+b_occ$n_visits <- ifelse(b_occ$species %in% ldm$species, 6, 10)
 
 b_occ <- as.data.table(b_occ)
 
@@ -124,15 +122,11 @@ T1 <- unique(T1[T1$observable_second == 1, c("obs_year", "plot", "species")])
 
 ## Merge b_occ with T1 to add 1 to rows in T1:
 
-T1$add <- 1
+T1$add <- 2
 b_occ <- merge(b_occ, T1, all.x = TRUE, by = c("obs_year", "plot", "species"))
 b_occ$add[is.na(b_occ$add)] <- 0
 
 b_occ$n_visits <- b_occ$n_visits + b_occ$add
-
-## If everything went well the number of lines with 4 visits should be 5 times
-## the nrow of T1:
-if(sum(b_occ$n_visits == 4) != 5*nrow(T1)) print("You made a mistake!")
 
 ## Count the number of times a species was seen per plot and year:
 b_occ[, "n_obs" := sum(observed), by = c("obs_year", "plot", "species")]
@@ -143,8 +137,7 @@ b_occ <- unique(b_occ[, c("obs_year",
                           "plot", 
                           "species", 
                           "n_obs",
-                          "n_visits",
-                          "obs_time")])
+                          "n_visits")])
 
 ## Merge with forest data and export:
 
@@ -152,6 +145,6 @@ bf_occ <- merge(b_occ, f_plot[, c(1,8:13,16:17,19:20,25:26)], by = "plot")
 
 dir.create("clean")
 
-write.csv(bf_occ, "clean/bpo_50.csv")
+write.csv(bf_occ, "clean/bpo_double_50.csv")
 
 ## -------------------------------END-------------------------------------------

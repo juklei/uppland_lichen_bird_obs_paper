@@ -88,8 +88,8 @@ data <- list(nobs = nrow(d_all),
              org = ifelse(d_all$organsim == "lichen", 1, 0),
              r_mean = d_all$r_mean_sc,#r_mean,
              r_sd = d_all$r_sd_sc,#r_sd,
-             cd = scale(d_all$PercentAbove7m),
-             ud = scale(d_all$PercentBelow7m),
+             cd = scale(d_all$PercentAbove5m),
+             ud = scale(d_all$PercentBelow5m),
              stand_dbh = scale(d_all$average_dbh_all_alive))
 
 ## Add prediction data:
@@ -105,7 +105,8 @@ data$sdbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.05)
 
 str(data)
 
-inits <-  list(list(alpha = 15,#c(15, 15),
+inits <-  list(list(sd_r = 0.1,
+                    alpha = 15,#c(15, 15),
                     beta_org = 0,
                     beta_ud = 0.5,#c(0.5, 0.5),
                     beta_cd = 0.5,#c(0.5, 0.5),
@@ -132,7 +133,8 @@ samples <- 10000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c("alpha",
+                   variable.names = c("sd_r",
+                                      "alpha",
                                       "beta_org",
                                       "beta_ud",
                                       "beta_cd",
@@ -145,16 +147,16 @@ zc <- coda.samples(jm,
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_lb_combined_2017_5m_sdbh.txt")
+  write(., "results/parameters_lb_combined_2017_5m.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
-pdf("figures/plot_zc_lb_combined_2017_5m_sdbh.pdf")
+pdf("figures/plot_zc_lb_combined_2017_5m.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_lb_combined_2017_5m_sdbh.txt")
+  write(., "results/diagnostics_lb_combined_2017_5m.txt")
 
 ## 6. Produce and export data for fancy figures --------------------------------
 
@@ -172,10 +174,10 @@ zj_pred <- jags.samples(jm,
 zj_pred_2017 <- zj_pred
 zj_pred_2017$ud <- data$ud_pred#backscale(data$ud_pred, data$ud)
 zj_pred_2017$cd <- data$cd_pred#backscale(data$cd_pred, data$cd)
-save(zj_pred_2017, file = "clean/combined_pred_2017_7m.rdata")
+save(zj_pred_2017, file = "clean/combined_pred_2017_5m.rdata")
 
-zj_pred_sdbh <- zj_pred
-zj_pred_2017_sdbh <- backscale(data$sdbh_pred, data$stand_dbh)
-save(zj_pred_2017_sdbh, file = "clean/combined_pred_2017_sdbh.rdata")
+# zj_pred_sdbh <- zj_pred
+# zj_pred_2017_sdbh <- backscale(data$sdbh_pred, data$stand_dbh)
+# save(zj_pred_2017_sdbh, file = "clean/combined_pred_2017_sdbh.rdata")
 
 ## -------------------------------END-------------------------------------------
