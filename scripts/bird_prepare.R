@@ -60,8 +60,10 @@ occ <- occ[!occ$plot %in% c("plot_201", "plot_202", "plot_203", "plot_204",
 occ <- merge(occ, exclude, by = "plot")
 occ <- occ[!(occ$obs_year == 2018 & occ$include_2018 == "N"), ]
 
-## Exclude predators, birds with large hr and passers from obs:
-occ <- occ[!occ$species %in% c("bergk",
+## Exclude predators, birds with large hr and passers from obs, as well as 
+## no_obs rows:
+occ <- occ[!occ$species %in% c("no_obs",
+                               "bergk",
                                "duvhk",
                                "ormvk",
                                "ekore",
