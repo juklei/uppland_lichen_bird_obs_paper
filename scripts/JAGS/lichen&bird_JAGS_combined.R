@@ -1,7 +1,7 @@
 ## bird and lichen richness modeled simultaniously with covariates
 ##
 ## First edit: 20190624
-## Last edit: 20190624
+## Last edit: 20190715
 ##
 ## Author: Julian Klein
 
@@ -11,7 +11,7 @@ model{
   
   ## Ecological process model:
   for(i in 1:nobs){
-    r_mean[i] ~ dnorm(richness[i], tau_richness[i])#, 1/sd_r^2)
+    r_mean[i] ~ dnorm(richness[i], tau_richness[i])
     ## Moment matching:
     tau_richness[i] <- 1/r_sd[i]^2
     richness[i] <- alpha + 
@@ -26,7 +26,6 @@ model{
   
   ## Priors:
   
-  #sd_r ~ dgamma(0.0001, 0.0001)
   alpha ~ dnorm(0, 0.001)
   beta_org ~ dnorm(0, 0.001)
   beta_ud ~ dnorm(0, 0.001)

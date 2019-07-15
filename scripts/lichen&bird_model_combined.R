@@ -1,7 +1,7 @@
 ## bird and lichen richness modeled simultaniously with covariates
 ## 
 ## First edit: 20190326
-## Last edit: 20190620
+## Last edit: 20190715
 ##
 ## Author: Julian Klein
 
@@ -47,13 +47,22 @@ load("clean/lichen_richness.rdata")
 
 ## Create data set with all needed vars:
 
-b_2017 <- data.frame(r_mean_sc = summary(bpr_2017$scaled_rb, mean)$stat,
-                     r_sd_sc = summary(bpr_2017$scaled_rb, sd)$stat,
-                     r_mean = summary(bpr_2017$richness, mean)$stat,
-                     r_sd = summary(bpr_2017$richness, sd)$stat,
-                     obs_year = 2017,
-                     organsim = "bird",
-                     plot = bpr_2017$plotnames)
+l_2018 <- data.frame(r_mean_sc = apply(zj_lichen$scaled_rl, 2, mean),
+                     r_sd_sc = apply(zj_lichen$scaled_rl, 2, sd),
+                     r_mean = apply(zj_lichen$plot_richness, 2, mean),
+                     r_sd = apply(zj_lichen$plot_richness, 2, sd),
+                     obs_year = 2018,
+                     organsim = "lichen",
+                     plot = zj_lichen$plotnames)
+
+# b_2017 <- data.frame(r_mean_sc = summary(bpr_2017$scaled_rb, mean)$stat,
+#                      r_sd_sc = summary(bpr_2017$scaled_rb, sd)$stat,
+#                      r_mean = summary(bpr_2017$richness, mean)$stat,
+#                      r_sd = summary(bpr_2017$richness, sd)$stat,
+#                      obs_year = 2017,
+#                      organsim = "bird",
+#                      plot = bpr_2017$plotnames)
+# d_all <- rbind(b_2017, l_2018)
 
 b_2018 <- data.frame(r_mean_sc = summary(bpr_2018$scaled_rb, mean)$stat,
                      r_sd_sc = summary(bpr_2018$scaled_rb, sd)$stat,
@@ -62,34 +71,26 @@ b_2018 <- data.frame(r_mean_sc = summary(bpr_2018$scaled_rb, mean)$stat,
                      obs_year = 2018,
                      organsim = "bird",
                      plot = bpr_2018$plotnames)
+l_2018 <- droplevels(l_2018[l_2018$plot %in% b_2018$plot, ])
+d_all <- rbind(b_2018, l_2018)
 
-l_2018 <- data.frame(r_mean_sc = apply(zj_lichen$scaled_rl, 2, mean),
-                     r_sd_sc = apply(zj_lichen$scaled_rl, 2, sd),
-                     r_mean = apply(zj_lichen$plot_richness, 2, mean),
-                     r_sd = apply(zj_lichen$plot_richness, 2, sd),
-                     obs_year = 2018,
-                     organsim = "lichen",
-                     plot = zj_lichen$plotnames)
-#l_2018 <- droplevels(l_2018[l_2018$plot %in% b_2018$plot, ])
-
-d_all <- rbind(b_2017, l_2018)
 d_all <- merge(d_all, unique(bpo[, c(2,8:13,18)]), all.x = TRUE, by = "plot")
 
-# ## Make response matrices:
-# r_mean <- acast(d_all, formula = plot ~ organsim, value.var = "r_mean_sc")
-# r_sd <- acast(d_all, formula = plot ~ organsim, value.var = "r_sd_sc")
-# 
-# ## Unique plot data:
-# plu <- unique(d_all[, c(1,8:14)])
+## Export correlations:
+d_cor <- bpo[, c(8:13,18)]
+d_cor$p_spruce <- bpo$nr_gran/bpo$nr_all_alive
+d_cor$p_pine <- bpo$nr_tall/bpo$nr_all_alive
+d_cor$p_dec <- bpo$nr_lov/bpo$nr_all_alive
+d_cor <- unique(d_cor)
+capture.output(cor(d_cor)) %>% write(., "results/correlations.txt")
 
 ## Create model data set:
 data <- list(nobs = nrow(d_all),
-             nsites = nlevels(d_all$plot),
              org = ifelse(d_all$organsim == "lichen", 1, 0),
-             r_mean = d_all$r_mean_sc,#r_mean,
-             r_sd = d_all$r_sd_sc,#r_sd,
-             cd = scale(d_all$PercentAbove5m),
-             ud = scale(d_all$PercentBelow5m),
+             r_mean = d_all$r_mean_sc,
+             r_sd = d_all$r_sd_sc,
+             cd = scale(d_all$PercentAbove3m),
+             ud = scale(d_all$PercentBelow3m),
              stand_dbh = scale(d_all$average_dbh_all_alive))
 
 ## Add prediction data:
@@ -105,16 +106,33 @@ data$sdbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.05)
 
 str(data)
 
-inits <-  list(list(sd_r = 0.1,
-                    alpha = 15,#c(15, 15),
+inits <-  list(list(alpha = 5,
                     beta_org = 0,
-                    beta_ud = 0.5,#c(0.5, 0.5),
-                    beta_cd = 0.5,#c(0.5, 0.5),
-                    beta_sdbh = 0.5,#c(0.5, 0.5)
+                    beta_ud = 0.5,
+                    beta_cd = 0.5,
+                    beta_sdbh = 0.5,
                     int_ud = 0.1,
                     int_cd = 0.2,
                     int_sdbh = 0.1
-                    )
+                    ),
+               list(alpha = -2,
+                    beta_org = 0.2,
+                    beta_ud = 0.7,
+                    beta_cd = 0.1,
+                    beta_sdbh = 0,
+                    int_ud = 0,
+                    int_cd = 0,
+                    int_sdbh = 0
+               ),
+               list(alpha = 0,
+                    beta_org = 0,
+                    beta_ud = 1,
+                    beta_cd = 1,
+                    beta_sdbh = -0.5,
+                    int_ud = -0.1,
+                    int_cd = -0.2,
+                    int_sdbh = -0.1
+               )
                )
 
 model <- "scripts/JAGS/lichen&bird_JAGS_combined.R"
@@ -123,7 +141,7 @@ jm <- jags.model(model,
                  data = data,
                  n.adapt = 5000, 
                  inits = inits, 
-                 n.chains = 1) 
+                 n.chains = 3) 
 
 burn.in <-  10000
 
@@ -133,8 +151,7 @@ samples <- 10000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = c("sd_r",
-                                      "alpha",
+                   variable.names = c("alpha",
                                       "beta_org",
                                       "beta_ud",
                                       "beta_cd",
@@ -147,16 +164,16 @@ zc <- coda.samples(jm,
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_lb_combined_2017_5m.txt")
+  write(., "results/parameters_lb_combined_2018_3m_sc.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
-pdf("figures/plot_zc_lb_combined_2017_5m.pdf")
+pdf("figures/plot_zc_lb_combined_2018_3m_sc.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_lb_combined_2017_5m.txt")
+  write(., "results/diagnostics_lb_combined_2018_3m_sc.txt")
 
 ## 6. Produce and export data for fancy figures --------------------------------
 
@@ -164,9 +181,7 @@ zj_pred <- jags.samples(jm,
                         variable.names = c("rb_ud", 
                                            "rl_ud", 
                                            "rb_cd", 
-                                           "rl_cd"#, 
-                                           #"rb_sdbh", 
-                                           #"rl_sdbh"
+                                           "rl_cd"
                                            ),
                         n.iter = samples,
                         thin = n.thin)
@@ -174,7 +189,7 @@ zj_pred <- jags.samples(jm,
 zj_pred_2017 <- zj_pred
 zj_pred_2017$ud <- data$ud_pred#backscale(data$ud_pred, data$ud)
 zj_pred_2017$cd <- data$cd_pred#backscale(data$cd_pred, data$cd)
-save(zj_pred_2017, file = "clean/combined_pred_2017_5m.rdata")
+save(zj_pred_2017, file = "clean/combined_pred_2017_7m_sc.rdata")
 
 # zj_pred_sdbh <- zj_pred
 # zj_pred_2017_sdbh <- backscale(data$sdbh_pred, data$stand_dbh)

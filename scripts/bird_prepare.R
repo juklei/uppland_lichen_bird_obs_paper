@@ -42,7 +42,7 @@ dev.off()
 ##    AHM book on p. 662. Instead of J indexed on site we want to index it on 
 ##    the species depending on wether it is long distance migrant or not.
 
-occ <- occ[occ$obs_year != 2019, ]
+occ <- occ[occ$obs_year != 2019 & occ$observer != "ses", ]
 
 ## Exclude plots in occ which were no lichen inventory occured:
 occ <- occ[occ$plot %in% paste0("plot_", unique(l_obs$Plot.no.)), ]

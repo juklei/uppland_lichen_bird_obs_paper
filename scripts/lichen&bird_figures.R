@@ -19,11 +19,11 @@ require("data.table")
 
 ## 3. Load and explore data ----------------------------------------------------
 
-load("clean/combined_pred_2017_3m.rdata")
+load("clean/combined_pred_2017_3m_sc.rdata")
 c_2017_3 <- zj_pred_2017
-load("clean/combined_pred_2017_5m.rdata")
+load("clean/combined_pred_2017_5m_sc.rdata")
 c_2017_5 <- zj_pred_2017
-load("clean/combined_pred_2017_7m.rdata")
+load("clean/combined_pred_2017_7m_sc.rdata")
 c_2017_7 <- zj_pred_2017
 
 load("clean/combined_pred_2017_sdbh.rdata")
@@ -93,7 +93,7 @@ g1 <- ggplot(d_lb, aes(x = density,
                        fill = organism, 
                        color = organism, 
                        linetype = story))
-g2 <- geom_line(size = 2)
+g2 <- geom_line(size = 3)
 g3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, colour = NA)
 g4 <- facet_grid(. ~ hb)
 
@@ -134,7 +134,7 @@ d_sdbh <- data.frame("r" = t(y_sdbh)[,2],
                      )
 
 q1 <- ggplot(d_sdbh, aes(x = sdbh, y = r, fill = organism, color = organism))
-q2 <- geom_line(size = 2)
+q2 <- geom_line(size = 3)
 q3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, colour = NA)
 
 png("figures/both_sdbh.png", 10000/4, 8000/4, "px", res = 600/4)
@@ -157,7 +157,7 @@ q1 + q2 + q3 +
 
 dev.off()
 
-## 6. Make graphs for scale difference in species richness per plot ------------
+## 6. Make graphs for difference in species richness per plot ------------------
 
 b_2017 <- data.frame(rb_mean = summary(bpr_2017$richness, mean)$stat,
                      rb_sd = summary(bpr_2017$richness, sd)$stat,

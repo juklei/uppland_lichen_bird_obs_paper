@@ -2,7 +2,7 @@
 ## Calculate this script for each year seperately
 ## 
 ## First edit: 20190326
-## Last edit: 20190326
+## Last edit: 20190626
 ##
 ## Author: Julian Klein
 
@@ -43,7 +43,7 @@ str(bpo)
 ## 4. The model ----------------------------------------------------------------
 
 ## Do everything for one year each:
-bpo <- droplevels(bpo[bpo$obs_year == 2018, ])
+bpo <- droplevels(bpo[bpo$obs_year == 2017, ])
 
 ## Create data arrays:
 
