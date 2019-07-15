@@ -12,6 +12,7 @@ model{
   ## Ecological process model:
   for(i in 1:nobs){
     r_mean[i] ~ dnorm(richness[i], 1/r_sd[i]^2)
+    r_sim[i] ~ dnorm(richness[i], 1/r_sd[i]^2)
     richness[i] <- alpha + residual[i] +
                    beta_org*org[i] +
                    beta_ud*ud[i,1] +
@@ -35,6 +36,28 @@ model{
   int_sdbh ~ dnorm(0, 0.001)
   plot_sd ~ dgamma(0.001, 0.001)
 
+  ## Model validation:
+  
+  ## Bayesian p-value:
+  mean_r_mean <- mean(r_mean[])
+  mean_r_sim <- mean(r_sim[])
+  p_mean <- step(mean_r_sim - mean_r_mean)
+
+  ## Coefficient of variation:
+  cv_r_mean <- sd(r_mean[])/mean_r_mean
+  cv_r_sim <- sd(r_sim[])/mean_r_sim
+  p_cv <- step(cv_r_mean - cv_r_sim)
+
+  ## Model fit:
+  for(m in 1:nobs){
+    sq[m] <- (r_mean[m] - richness[m])^2
+    sq_sim[m] <- (r_sim[m] - richness[m])^2
+  }
+
+  fit <- sum(sq[])
+  fit_sim <- sum(sq_sim[])
+  p_fit <- step(fit_sim - fit)
+  
   ## Predictions:
   
   # Understory density:

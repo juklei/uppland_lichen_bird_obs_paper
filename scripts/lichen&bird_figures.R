@@ -94,7 +94,7 @@ g1 <- ggplot(d_lb, aes(x = density,
                        color = organism, 
                        linetype = story))
 g2 <- geom_line(size = 3)
-g3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, colour = NA)
+g3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3)#, colour = NA)
 g4 <- facet_grid(. ~ hb)
 
 png("figures/both_both.png", 20000/4, 8000/4, "px", res = 600/4)

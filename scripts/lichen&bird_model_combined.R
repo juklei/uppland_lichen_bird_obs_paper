@@ -179,6 +179,50 @@ dev.off()
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
   write(., "results/diagnostics_lb_combined_2018_3m_sc.txt")
 
+# Produce validation metrics:
+zj_val <- jags.samples(jm,
+                       variable.names = c("mean_r_mean",
+                                          "mean_r_sim",
+                                          "p_mean",
+                                          "cv_r_mean",
+                                          "cv_r_sim",
+                                          "p_cv",
+                                          "fit",
+                                          "fit_sim",
+                                          "p_fit"),
+                       n.iter = samples,
+                       thin = n.thin)
+
+## Fit of mean:
+plot(zj_val$mean_r_mean,
+     zj_val$mean_r_sim,
+     xlab = "mean real",
+     ylab = "mean simulated",
+     cex = .05)
+abline(0, 1)
+p <- summary(zj_val$p_mean, mean)
+text(x = -0.08, y = 0.1, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+
+## Fit of variance:
+plot(zj_val$cv_r_mean,
+     zj_val$cv_r_sim,
+     xlab = "cv real",
+     ylab = "cv simulated",
+     cex = .05)
+abline(0,1)
+p <- summary(zj_val$p_cv, mean)
+text(x = -18, y = 2000, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+
+## Overall fit:
+plot(zj_val$fit,
+     zj_val$fit_sim,
+     xlab = "ssq real",
+     ylab = "ssq simulated",
+     cex = .05)
+abline(0,1)
+p <- summary(zj_val$p_fit, mean)
+text(x = 8, y = 10.85, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+
 ## 6. Produce and export data for fancy figures --------------------------------
 
 zj_pred <- jags.samples(jm,
