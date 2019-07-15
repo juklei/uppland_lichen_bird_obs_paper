@@ -113,7 +113,8 @@ inits <-  list(list(alpha = 5,
                     beta_sdbh = 0.5,
                     int_ud = 0.1,
                     int_cd = 0.2,
-                    int_sdbh = 0.1
+                    int_sdbh = 0.1,
+                    plot_sd = 0.1
                     ),
                list(alpha = -2,
                     beta_org = 0.2,
@@ -122,7 +123,8 @@ inits <-  list(list(alpha = 5,
                     beta_sdbh = 0,
                     int_ud = 0,
                     int_cd = 0,
-                    int_sdbh = 0
+                    int_sdbh = 0,
+                    plot_sd = 0.3
                ),
                list(alpha = 0,
                     beta_org = 0,
@@ -131,7 +133,8 @@ inits <-  list(list(alpha = 5,
                     beta_sdbh = -0.5,
                     int_ud = -0.1,
                     int_cd = -0.2,
-                    int_sdbh = -0.1
+                    int_sdbh = -0.1,
+                    plot_sd = 0.5
                )
                )
 
@@ -158,7 +161,8 @@ zc <- coda.samples(jm,
                                       "beta_sdbh",
                                       "int_ud",
                                       "int_cd",
-                                      "int_sdbh"), 
+                                      "int_sdbh",
+                                      "plot_sd"), 
                    n.iter = samples, 
                    thin = n.thin)
 

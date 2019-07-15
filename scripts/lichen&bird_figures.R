@@ -184,7 +184,7 @@ w6 <- annotate("text", 25, 18, label = "pcc = .096", size = 10)
 
 png("figures/both_cor.png", 10000/4, 6500/4, "px", res = 600/4)
 
-w1 + w2 + w4 + w5 + w6 +
+w1 + w4 + w5 + w2 + w6 +
   ylab("bird richness") + 
   xlab("lichen richness") + 
   theme_classic(40)

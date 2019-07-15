@@ -11,10 +11,8 @@ model{
   
   ## Ecological process model:
   for(i in 1:nobs){
-    r_mean[i] ~ dnorm(richness[i], tau_richness[i])
-    ## Moment matching:
-    tau_richness[i] <- 1/r_sd[i]^2
-    richness[i] <- alpha + 
+    r_mean[i] ~ dnorm(richness[i], 1/r_sd[i]^2)
+    richness[i] <- alpha + residual[i] +
                    beta_org*org[i] +
                    beta_ud*ud[i,1] +
                    beta_cd*cd[i,1] +
@@ -22,6 +20,7 @@ model{
                    int_ud*org[i]*ud[i,1] +
                    int_cd*org[i]*cd[i,1] +
                    int_sdbh*org[i]*stand_dbh[i,1]
+    residual[i] ~ dnorm(0, 1/plot_sd^2)
   }
   
   ## Priors:
@@ -34,6 +33,7 @@ model{
   int_ud ~ dnorm(0, 0.001)
   int_cd ~ dnorm(0, 0.001)
   int_sdbh ~ dnorm(0, 0.001)
+  plot_sd ~ dgamma(0.001, 0.001)
 
   ## Predictions:
   
