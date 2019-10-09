@@ -1,7 +1,7 @@
 ## Make nice figures for the lichen and bird comparison.
 ## 
 ## First edit: 20190625
-## Last edit: 20190625
+## Last edit: 20191007
 ##
 ## Author: Julian Klein
 
@@ -19,12 +19,19 @@ require("data.table")
 
 ## 3. Load and explore data ----------------------------------------------------
 
-load("clean/combined_pred_2017_3m_sc.rdata")
+load("clean/combined_pred_2017_3m_sc_backscaled.rdata")
 c_2017_3 <- zj_pred_2017
-load("clean/combined_pred_2017_5m_sc.rdata")
+load("clean/combined_pred_2017_5m_sc_backscaled.rdata")
 c_2017_5 <- zj_pred_2017
-load("clean/combined_pred_2017_7m_sc.rdata")
+load("clean/combined_pred_2017_7m_sc_backscaled.rdata")
 c_2017_7 <- zj_pred_2017
+
+load("clean/summed_pred_2017_3m.rdata")
+s_2017_3 <- zj_pred_2017_sum
+load("clean/summed_pred_2017_5m.rdata")
+s_2017_5 <- zj_pred_2017_sum
+load("clean/summed_pred_2017_7m.rdata")
+s_2017_7 <- zj_pred_2017_sum
 
 load("clean/combined_pred_2017_sdbh.rdata")
 str(zj_pred_2017_sdbh)
@@ -34,89 +41,135 @@ str(zj_lichen)
 
 load("clean/rb_2017.rdata")
 bpr_2017 <- zj_pred
-str(bpr_2017)
+load("clean/rb_2018.rdata")
+bpr_2018 <- zj_pred
 
 ## 4. Make graphs for birds and lichens for all heightbreaks and both ----------
-##    understory and canopy density for 2017
+##    understory and overstory density for 2017
 
 ## Make data set:
 y_lb <- cbind(summary(c_2017_3$rb_ud, quantile, c(.025,.5,.975))$stat,
               summary(c_2017_5$rb_ud, quantile, c(.025,.5,.975))$stat,
               summary(c_2017_7$rb_ud, quantile, c(.025,.5,.975))$stat,
-              summary(c_2017_3$rb_cd, quantile, c(.025,.5,.975))$stat,
-              summary(c_2017_5$rb_cd, quantile, c(.025,.5,.975))$stat,
-              summary(c_2017_7$rb_cd, quantile, c(.025,.5,.975))$stat,
+              summary(c_2017_3$rb_od, quantile, c(.025,.5,.975))$stat,
+              summary(c_2017_5$rb_od, quantile, c(.025,.5,.975))$stat,
+              summary(c_2017_7$rb_od, quantile, c(.025,.5,.975))$stat,
               summary(c_2017_3$rl_ud, quantile, c(.025,.5,.975))$stat,
               summary(c_2017_5$rl_ud, quantile, c(.025,.5,.975))$stat,
               summary(c_2017_7$rl_ud, quantile, c(.025,.5,.975))$stat,
-              summary(c_2017_3$rl_cd, quantile, c(.025,.5,.975))$stat,
-              summary(c_2017_5$rl_cd, quantile, c(.025,.5,.975))$stat,
-              summary(c_2017_7$rl_cd, quantile, c(.025,.5,.975))$stat)
+              summary(c_2017_3$rl_od, quantile, c(.025,.5,.975))$stat,
+              summary(c_2017_5$rl_od, quantile, c(.025,.5,.975))$stat,
+              summary(c_2017_7$rl_od, quantile, c(.025,.5,.975))$stat)
       
 d_lb <- data.frame("richness" = t(y_lb)[,2],
                    "lower" = t(y_lb)[,1],
                    "upper" = t(y_lb)[,3],
                    "density" = c(c_2017_3$ud, c_2017_5$ud, c_2017_7$ud,
-                                 c_2017_3$cd, c_2017_5$cd, c_2017_7$cd,
+                                 c_2017_3$od, c_2017_5$od, c_2017_7$od,
                                  c_2017_3$ud, c_2017_5$ud, c_2017_7$ud,
-                                 c_2017_3$cd, c_2017_5$cd, c_2017_7$cd),
+                                 c_2017_3$od, c_2017_5$od, c_2017_7$od),
                    "organism" = c(rep("birds", length(y_lb[1,])/2),  
                                   rep("lichens", length(y_lb[1,])/2)),
                    "story" = c(rep("understory", length(c_2017_3$ud)),
                                rep("understory", length(c_2017_5$ud)),
                                rep("understory", length(c_2017_7$ud)),
-                               rep("canopy", length(c_2017_3$cd)),
-                               rep("canopy", length(c_2017_5$cd)),
-                               rep("canopy", length(c_2017_7$cd)),
+                               rep("overstory", length(c_2017_3$od)),
+                               rep("overstory", length(c_2017_5$od)),
+                               rep("overstory", length(c_2017_7$od)),
                                rep("understory", length(c_2017_3$ud)),
                                rep("understory", length(c_2017_5$ud)),
                                rep("understory", length(c_2017_7$ud)),
-                               rep("canopy", length(c_2017_3$cd)),
-                               rep("canopy", length(c_2017_5$cd)),
-                               rep("canopy", length(c_2017_7$cd))),
+                               rep("overstory", length(c_2017_3$od)),
+                               rep("overstory", length(c_2017_5$od)),
+                               rep("overstory", length(c_2017_7$od))),
                    "hb" = c(rep("heightbreak = 3 meters", length(c_2017_3$ud)),
                             rep("heightbreak = 5 meters", length(c_2017_5$ud)),
                             rep("heightbreak = 7 meters", length(c_2017_7$ud)),
-                            rep("heightbreak = 3 meters", length(c_2017_3$cd)),
-                            rep("heightbreak = 5 meters", length(c_2017_5$cd)),
-                            rep("heightbreak = 7 meters", length(c_2017_7$cd)),
+                            rep("heightbreak = 3 meters", length(c_2017_3$od)),
+                            rep("heightbreak = 5 meters", length(c_2017_5$od)),
+                            rep("heightbreak = 7 meters", length(c_2017_7$od)),
                             rep("heightbreak = 3 meters", length(c_2017_3$ud)),
                             rep("heightbreak = 5 meters", length(c_2017_5$ud)),
                             rep("heightbreak = 7 meters", length(c_2017_7$ud)),
-                            rep("heightbreak = 3 meters", length(c_2017_3$cd)),
-                            rep("heightbreak = 5 meters", length(c_2017_5$cd)),
-                            rep("heightbreak = 7 meters", length(c_2017_7$cd)))
-                   )
+                            rep("heightbreak = 3 meters", length(c_2017_3$od)),
+                            rep("heightbreak = 5 meters", length(c_2017_5$od)),
+                            rep("heightbreak = 7 meters", length(c_2017_7$od))))
 
 g1 <- ggplot(d_lb, aes(x = density, 
                        y = richness, 
                        fill = organism, 
                        color = organism, 
-                       linetype = story))
+                       linetype = organism))
 g2 <- geom_line(size = 3)
 g3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3)#, colour = NA)
-g4 <- facet_grid(. ~ hb)
+g4 <- facet_wrap(story ~ hb, scales = "free_x")
 
-png("figures/both_both.png", 20000/4, 8000/4, "px", res = 600/4)
+png("figures/od_ud_sdbh_95CI_combined.png", 15000/4, 12000/4, "px", res = 600/4)
 
 g1 + g2 + g3 + g4 +
-  geom_vline(xintercept = 0, color = "black", linetype = "dashed")  + 
-  geom_hline(yintercept = 0, color = "black", linetype = "dashed")  + 
-  ylab("richness relative to the intercept") + 
-  xlab("vegetation density") + 
+  # geom_vline(xintercept = 0, color = "black", linetype = "dashed")  + 
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed")  +
+  ylab("scaled species richness") + 
+  xlab("vegetation density (% laser returns below/above heightbreak)") + 
   scale_color_manual(breaks = c("birds", "lichens"), 
                      values = c("red", "blue")) + 
   scale_fill_manual(breaks = c("birds", "lichens"),
                     values = c("red", "blue")) +
   theme_classic(40) +                  
-  theme(legend.position = c(0.35, 0.9), 
+  theme(legend.position = c(0.12, 0.95), 
         legend.box = "horizontal",
         legend.title = element_blank(),
-        legend.key.size = unit(3, 'lines'))
+        legend.key.size = unit(3, 'lines'),
+        legend.direction = "horizontal")
 
 dev.off()
 
-## 5. Make graphs for age with absolute richness values ------------------------
+## 5. Make graphs for birds and lichens for all heightbreaks and both ----------
+##    understory and overstory density for 2017 with summed richness
+
+## Make data set:
+y_s <- cbind(summary(s_2017_3$r_ud, quantile, c(.025,.5,.975))$stat,
+             summary(s_2017_5$r_ud, quantile, c(.025,.5,.975))$stat,
+             summary(s_2017_7$r_ud, quantile, c(.025,.5,.975))$stat,
+             summary(s_2017_3$r_od, quantile, c(.025,.5,.975))$stat,
+             summary(s_2017_5$r_od, quantile, c(.025,.5,.975))$stat,
+             summary(s_2017_7$r_od, quantile, c(.025,.5,.975))$stat)
+
+d_s <- data.frame("richness" = t(y_s)[,2], 
+                  "lower" = t(y_s)[,1], 
+                  "upper" = t(y_s)[,3],
+                  "density" = c(s_2017_3$ud, s_2017_5$ud, s_2017_7$ud,
+                                s_2017_3$od, s_2017_5$od, s_2017_7$od),
+                  "story" = c(rep("understory", length(s_2017_3$ud)),
+                              rep("understory", length(s_2017_5$ud)),
+                              rep("understory", length(s_2017_7$ud)),
+                              rep("overstory", length(s_2017_3$od)),
+                              rep("overstory", length(s_2017_5$od)),
+                              rep("overstory", length(s_2017_7$od))),
+                  "hb" = c(rep("heightbreak = 3 meters", length(s_2017_3$ud)),
+                           rep("heightbreak = 5 meters", length(s_2017_5$ud)),
+                           rep("heightbreak = 7 meters", length(s_2017_7$ud)),
+                           rep("heightbreak = 3 meters", length(s_2017_3$od)),
+                           rep("heightbreak = 5 meters", length(s_2017_5$od)),
+                           rep("heightbreak = 7 meters", length(s_2017_7$od))))
+
+p1 <- ggplot(d_s, aes(x = density, y = richness))
+p2 <- geom_line(size = 3)
+p3 <- geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3)#, colour = NA)
+p4 <- facet_wrap(story ~ hb, scales = "free_x")
+
+png("figures/od_ud_sdbh_95CI_summed.png", 15000/4, 12000/4, "px", res = 600/4)
+
+p1 + p2 + p3 + p4 +
+  # geom_vline(xintercept = 0, color = "black", linetype = "dashed")  + 
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed")  +
+  ylab("summed scaled species richness") + 
+  xlab("vegetation density (% laser returns below/above heightbreak)") +
+  theme_classic(40) 
+
+dev.off()
+
+## 6. Make graphs for age with absolute richness values ------------------------
 
 ## Stand dbh:
 
@@ -157,20 +210,24 @@ q1 + q2 + q3 +
 
 dev.off()
 
-## 6. Make graphs for difference in species richness per plot ------------------
+## 7. Make graphs for difference in species richness per plot ------------------
 
 b_2017 <- data.frame(rb_mean = summary(bpr_2017$richness, mean)$stat,
                      rb_sd = summary(bpr_2017$richness, sd)$stat,
                      plot = bpr_2017$plotnames)
+b_2018 <- data.frame(rb_mean = summary(bpr_2018$richness, mean)$stat,
+                     rb_sd = summary(bpr_2018$richness, sd)$stat,
+                     plot = bpr_2018$plotnames)
+b_both <- rbind(b_2017, b_2018)
 
 l_2018 <- data.frame(rl_mean = apply(zj_lichen$plot_richness, 2, mean),
                      rl_sd = apply(zj_lichen$plot_richness, 2, sd),
                      plot = zj_lichen$plotnames)
 
-d_bl <- merge(b_2017, l_2018, by = "plot")
+d_bl <- merge(b_both, l_2018, all.x = TRUE, by = "plot")
 
 ## Pearson cc:
-pcc <- cor(d_bl$rl_mean, d_bl$rb_mean)
+cor(d_bl$rl_mean, d_bl$rb_mean)
 
 w1 <- ggplot(d_bl, aes(x = rl_mean, y = rb_mean))
 w2 <- geom_point(size = 3)
@@ -180,7 +237,7 @@ w4 <- geom_errorbar(aes(ymin = rb_mean - rb_sd, ymax = rb_mean + rb_sd),
                     color = "red", alpha = 0.5) 
 w5 <- geom_errorbarh(aes(xmin = rl_mean - rl_sd, xmax = rl_mean + rl_sd), 
                      color = "blue", alpha = 0.5)
-w6 <- annotate("text", 25, 18, label = "pcc = .096", size = 10)
+w6 <- annotate("text", 25, 18, label = "pcc = .12", size = 10)
 
 png("figures/both_cor.png", 10000/4, 6500/4, "px", res = 600/4)
 

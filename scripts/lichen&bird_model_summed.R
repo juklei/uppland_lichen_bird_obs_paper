@@ -1,7 +1,7 @@
 ## summed bird and lichen richness
 ## 
 ## First edit: 20190716
-## Last edit: 20190716
+## Last edit: 20191007
 ##
 ## Author: Julian Klein
 
@@ -68,68 +68,64 @@ d_summed <- d_summed[, list(r_mean = sum(r_mean_sc), r_sd = sqrt(sum(r_var_sc)))
 #                      by = "plot"]
 
 d_summed <- merge(d_summed, 
-                  unique(bpo[, c(2,8:13,18)]), all.x = TRUE, by = "plot")
+                  unique(bpo[, c(2, 8:14, 20)]), all.x = TRUE, by = "plot")
 
 ## Create model data set:
 data <- list(nobs = nrow(d_summed),
              r_mean = d_summed$r_mean,
              r_sd = d_summed$r_sd,
-             cd = scale(d_summed$PercentAbove5m),
-             ud = scale(d_summed$PercentBelow5m),
-             stand_dbh = scale(d_summed$average_dbh_all_alive))
+             od = scale(d_summed$PercentAbove3m),
+             ud = scale(d_summed$PercentBelow3m),
+             sdbh = scale(d_summed$average_dbh_all_alive))
 
 ## Add prediction data:
 
 ## Understorey density:
 data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
 
-## Canopy density:
-data$cd_pred <- seq(min(data$cd), max(data$cd), 0.05)
+## Overstory density:
+data$od_pred <- seq(min(data$od), max(data$od), 0.05)
 
-## Stand dbh:
-data$sdbh_pred <- seq(min(data$stand_dbh), max(data$stand_dbh), 0.05)
+## Sdbh:
+data$sdbh_pred <- seq(min(data$sdbh), max(data$sdbh), 0.05)
 
 str(data)
 
 inits <-  list(list(alpha = 5,
                     beta_ud = 0.5,
-                    beta_cd = 0.5,
+                    beta_od = 0.5,
                     beta_sdbh = 0.5,
-                    plot_sd = 0.8
-                    ),
+                    plot_sd = 0.8),
                list(alpha = -2,
                     beta_ud = 0.7,
-                    beta_cd = 0.1,
+                    beta_od = 0.1,
                     beta_sdbh = 0,
-                    plot_sd = 0.1
-               ),
+                    plot_sd = 0.1),
                list(alpha = 0,
                     beta_ud = 1,
-                    beta_cd = 1,
+                    beta_od = 1,
                     beta_sdbh = -0.5,
-                    plot_sd = 1.1
-               )
-               )
+                    plot_sd = 1.1))
 
 model <- "scripts/JAGS/lichen&bird_JAGS_summed.R"
 
 jm <- jags.model(model,
                  data = data,
-                 n.adapt = 5000, 
+                 n.adapt = 10000, 
                  inits = inits, 
                  n.chains = 3) 
 
-burn.in <-  50000
+burn.in <-  40000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 10000
-n.thin <- 5
+samples <- 100000
+n.thin <- 50
 
 zc <- coda.samples(jm,
                    variable.names = c("alpha",
                                       "beta_ud",
-                                      "beta_cd",
+                                      "beta_od",
                                       "beta_sdbh",
                                       "plot_sd"), 
                    n.iter = samples, 
@@ -137,59 +133,75 @@ zc <- coda.samples(jm,
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_lb_summed_2017_5m.txt")
+  write(., "results/parameters_lb_summed_2017_3m.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
-pdf("figures/plot_zc_lb_summed_2017_5m.pdf")
+## Look at correlations of parameters:
+zc_mat <- as.matrix(zc[[1]]); dimnames(zc_mat)
+plot(zc_mat[, 2], zc_mat[, 3])
+
+pdf("figures/plot_zc_lb_summed_2017_3m.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_lb_summed_2017_5m.txt")
+  write(., "results/diagnostics_lb_summed_2017_3m.txt")
 
-# Produce validation metrics:
-zj_val <- jags.samples(jm,
-                       variable.names = c("mean_r_mean",
-                                          "mean_r_sim",
-                                          "p_mean",
-                                          "cv_r_mean",
-                                          "cv_r_sim",
-                                          "p_cv",
-                                          "fit",
-                                          "fit_sim",
-                                          "p_fit"),
-                       n.iter = samples,
-                       thin = n.thin)
+# # Produce validation metrics:
+# zj_val <- jags.samples(jm,
+#                        variable.names = c("mean_r_mean",
+#                                           "mean_r_sim",
+#                                           "p_mean",
+#                                           "cv_r_mean",
+#                                           "cv_r_sim",
+#                                           "p_cv",
+#                                           "fit",
+#                                           "fit_sim",
+#                                           "p_fit"),
+#                        n.iter = samples,
+#                        thin = n.thin)
+# 
+# ## Fit of mean:
+# plot(zj_val$mean_r_mean,
+#      zj_val$mean_r_sim,
+#      xlab = "mean real",
+#      ylab = "mean simulated",
+#      cex = .05)
+# abline(0, 1)
+# p <- summary(zj_val$p_mean, mean)
+# text(x = -0.08, y = 0.1, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+# 
+# ## Fit of variance:
+# plot(zj_val$cv_r_mean,
+#      zj_val$cv_r_sim,
+#      xlab = "cv real",
+#      ylab = "cv simulated",
+#      cex = .05)
+# abline(0,1)
+# p <- summary(zj_val$p_cv, mean)
+# text(x = -18, y = 2000, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+# 
+# ## Overall fit:
+# plot(zj_val$fit,
+#      zj_val$fit_sim,
+#      xlab = "ssq real",
+#      ylab = "ssq simulated",
+#      cex = .05)
+# abline(0,1)
+# p <- summary(zj_val$p_fit, mean)
+# text(x = 8, y = 10.85, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
 
-## Fit of mean:
-plot(zj_val$mean_r_mean,
-     zj_val$mean_r_sim,
-     xlab = "mean real",
-     ylab = "mean simulated",
-     cex = .05)
-abline(0, 1)
-p <- summary(zj_val$p_mean, mean)
-text(x = -0.08, y = 0.1, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+## 6. Produce and export data for fancy figures --------------------------------
 
-## Fit of variance:
-plot(zj_val$cv_r_mean,
-     zj_val$cv_r_sim,
-     xlab = "cv real",
-     ylab = "cv simulated",
-     cex = .05)
-abline(0,1)
-p <- summary(zj_val$p_cv, mean)
-text(x = -18, y = 2000, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+zj_pred <- jags.samples(jm,
+                        variable.names = c("r_ud", "r_od"),
+                        n.iter = samples,
+                        thin = n.thin)
 
-## Overall fit:
-plot(zj_val$fit,
-     zj_val$fit_sim,
-     xlab = "ssq real",
-     ylab = "ssq simulated",
-     cex = .05)
-abline(0,1)
-p <- summary(zj_val$p_fit, mean)
-text(x = 8, y = 10.85, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+zj_pred_2017_sum <- zj_pred
+zj_pred_2017_sum$ud <- backscale(data$ud_pred, data$ud)
+zj_pred_2017_sum$od <- backscale(data$od_pred, data$od)
+save(zj_pred_2017_sum, file = "clean/summed_pred_2017_3m.rdata")
 
 ## -------------------------------END-------------------------------------------

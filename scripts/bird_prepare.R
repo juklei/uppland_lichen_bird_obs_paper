@@ -2,7 +2,7 @@
 ## script.
 ##
 ## First edit: 20190306
-## Last edit: 20190619
+## Last edit:  20191009
 ##
 ## Author: Julian Klein
 
@@ -32,7 +32,7 @@ dir.create("figures")
 
 png("figures/forest_correlations_plot.png", 3000, 1000, "px")
 
-corrgram(unique(na.omit(f_plot[, c(6:13, 16:27)])), 
+corrgram(unique(f_plot[, c(6:13, 15, 17:27)]), 
          lower.panel = panel.pie, upper.panel = panel.cor,
          cex.labels = 3)
 
@@ -143,7 +143,7 @@ b_occ <- unique(b_occ[, c("obs_year",
 
 ## Merge with forest data and export:
 
-bf_occ <- merge(b_occ, f_plot[, c(1,8:13,16:17,19:20,25:26)], by = "plot")
+bf_occ <- merge(b_occ, f_plot[, c(1,6,8:13,15,17:18,20:21,26:27)], by = "plot")
 
 dir.create("clean")
 
