@@ -26,7 +26,7 @@ model{
   beta_ud ~ dnorm(0, 0.001)
   beta_od ~ dnorm(0, 0.001)
   beta_sdbh ~ dnorm(0, 0.001)
-  plot_sd ~ dgamma(0.001, 0.001)
+  plot_sd ~ dunif(0.0001, 10)
 
 #   ## Model validation:
 #   

@@ -74,8 +74,8 @@ d_summed <- merge(d_summed,
 data <- list(nobs = nrow(d_summed),
              r_mean = d_summed$r_mean,
              r_sd = d_summed$r_sd,
-             od = scale(d_summed$PercentAbove3m),
-             ud = scale(d_summed$PercentBelow3m),
+             od = scale(d_summed$PercentAbove7m),
+             ud = scale(d_summed$PercentBelow7m),
              sdbh = scale(d_summed$average_dbh_all_alive))
 
 ## Add prediction data:
@@ -115,7 +115,7 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 3) 
 
-burn.in <-  40000
+burn.in <-  90000
 
 update(jm, n.iter = burn.in) 
 
@@ -133,7 +133,7 @@ zc <- coda.samples(jm,
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_lb_summed_2017_3m.txt")
+  write(., "results/parameters_lb_summed_2017_7m.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
@@ -141,12 +141,12 @@ capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>%
 zc_mat <- as.matrix(zc[[1]]); dimnames(zc_mat)
 plot(zc_mat[, 2], zc_mat[, 3])
 
-pdf("figures/plot_zc_lb_summed_2017_3m.pdf")
+pdf("figures/plot_zc_lb_summed_2017_7m.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_lb_summed_2017_3m.txt")
+  write(., "results/diagnostics_lb_summed_2017_7m.txt")
 
 # # Produce validation metrics:
 # zj_val <- jags.samples(jm,
@@ -202,6 +202,6 @@ zj_pred <- jags.samples(jm,
 zj_pred_2017_sum <- zj_pred
 zj_pred_2017_sum$ud <- backscale(data$ud_pred, data$ud)
 zj_pred_2017_sum$od <- backscale(data$od_pred, data$od)
-save(zj_pred_2017_sum, file = "clean/summed_pred_2017_3m.rdata")
+save(zj_pred_2017_sum, file = "clean/summed_pred_2017_7m.rdata")
 
 ## -------------------------------END-------------------------------------------

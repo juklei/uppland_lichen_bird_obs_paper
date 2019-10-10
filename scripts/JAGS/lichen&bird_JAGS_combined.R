@@ -60,6 +60,9 @@ model{
   
   ## Predictions:
   
+  ## Lichen sdbh slope:
+  lichen_sdbh <- beta_sdbh + int_sdbh
+  
   # Understory density:
   for(m in 1:length(ud_pred)){
     rb_ud[m] <- alpha + beta_ud*ud_pred[m]

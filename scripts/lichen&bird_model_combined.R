@@ -39,8 +39,8 @@ dir("clean")
 
 load("clean/rb_2017.rdata")
 bpr_2017 <- zj_pred
-# load("clean/rb_2018.rdata")
-# bpr_2018 <- zj_pred
+load("clean/rb_2018.rdata")
+bpr_2018 <- zj_pred
 load("clean/lichen_richness.rdata")
 
 ## 4. The model ----------------------------------------------------------------
@@ -55,29 +55,40 @@ l_2018 <- data.frame(r_mean_sc = apply(zj_lichen$scaled_rl, 2, mean),
                      organsim = "lichen",
                      plot = zj_lichen$plotnames)
 
-b_2017 <- data.frame(r_mean_sc = summary(bpr_2017$scaled_rb, mean)$stat,
-                     r_sd_sc = summary(bpr_2017$scaled_rb, sd)$stat,
-                     r_mean = summary(bpr_2017$richness, mean)$stat,
-                     r_sd = summary(bpr_2017$richness, sd)$stat,
-                     obs_year = 2017,
-                     organsim = "bird",
-                     plot = bpr_2017$plotnames)
-d_all <- rbind(b_2017, l_2018)
-
-# b_2018 <- data.frame(r_mean_sc = summary(bpr_2018$scaled_rb, mean)$stat,
-#                      r_sd_sc = summary(bpr_2018$scaled_rb, sd)$stat,
-#                      r_mean = summary(bpr_2018$richness, mean)$stat,
-#                      r_sd = summary(bpr_2018$richness, sd)$stat,
-#                      obs_year = 2018,
+# b_2017 <- data.frame(r_mean_sc = summary(bpr_2017$scaled_rb, mean)$stat,
+#                      r_sd_sc = summary(bpr_2017$scaled_rb, sd)$stat,
+#                      r_mean = summary(bpr_2017$richness, mean)$stat,
+#                      r_sd = summary(bpr_2017$richness, sd)$stat,
+#                      obs_year = 2017,
 #                      organsim = "bird",
-#                      plot = bpr_2018$plotnames)
-# l_2018 <- droplevels(l_2018[l_2018$plot %in% b_2018$plot, ])
-# d_all <- rbind(b_2018, l_2018)
+#                      plot = bpr_2017$plotnames)
+# d_all <- rbind(b_2017, l_2018)
+
+b_2018 <- data.frame(r_mean_sc = summary(bpr_2018$scaled_rb, mean)$stat,
+                     r_sd_sc = summary(bpr_2018$scaled_rb, sd)$stat,
+                     r_mean = summary(bpr_2018$richness, mean)$stat,
+                     r_sd = summary(bpr_2018$richness, sd)$stat,
+                     obs_year = 2018,
+                     organsim = "bird",
+                     plot = bpr_2018$plotnames)
+l_2018 <- droplevels(l_2018[l_2018$plot %in% b_2018$plot, ])
+d_all <- rbind(b_2018, l_2018)
 
 d_all <- merge(d_all, unique(bpo[, c(2, 8:14, 20)]), all.x = TRUE, by = "plot")
 
-## Export correlations:
-write.csv(cor(unique(bpo[, c(8:18, 20:21)])), "results/correlations.csv")
+## Export correlations and summary:
+cordata <- unique(bpo[, c(8:21)])
+cordata$perc_lov <- cordata$nr_lov/cordata$nr_all_alive
+cordata$perc_gran <- cordata$nr_gran/cordata$nr_all_alive
+cordata$perc_tall <- cordata$nr_tall/cordata$nr_all_alive
+cordata$perc_skarm <- cordata$nr_skarm/cordata$nr_gran
+cordata$lov_ha <- cordata$nr_lov/(pi*.03)
+cordata$gran_ha <- cordata$nr_gran/(pi*.03)
+cordata$tall_ha <- cordata$nr_tall/(pi*.03)
+cordata$skarm_ha <- cordata$nr_skarm/(pi*.03)
+write.csv(cor(cordata[, c(2:8, 13, 19:22)]), "results/correlations.csv")
+capture.output(summary(cordata[, c(2:8, 13, 19:22)])) %>% 
+  write(., "results/summary.txt")
 
 ## Create model data set:
 data <- list(nobs = nrow(d_all),
@@ -153,13 +164,14 @@ zc <- coda.samples(jm,
                                       "int_ud",
                                       "int_od",
                                       "int_sdbh",
-                                      "plot_sd"), 
+                                      "plot_sd",
+                                      "lichen_sdbh"), 
                    n.iter = samples, 
                    thin = n.thin)
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_lb_combined_2017_3m_sc.txt")
+  write(., "results/parameters_lb_combined_2018_3m_sc.txt")
 
 ## 5. Validate the model and export validation data and figures ----------------
 
@@ -167,12 +179,12 @@ capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>%
 zc_mat <- as.matrix(zc[[1]]); dimnames(zc_mat)
 plot(zc_mat[, 2], zc_mat[, 3])
 
-pdf("figures/plot_zc_lb_combined_2017_3m_sc.pdf")
+pdf("figures/plot_zc_lb_combined_2018_3m_sc.pdf")
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_lb_combined_2017_3m_sc.txt")
+  write(., "results/diagnostics_lb_combined_2018_3m_sc.txt")
 
 # # Produce validation metrics:
 # zj_val <- jags.samples(jm,
