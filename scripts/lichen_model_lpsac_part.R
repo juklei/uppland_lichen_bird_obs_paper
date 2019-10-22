@@ -131,7 +131,7 @@ for(i in 1:data$nplot) {
 
 dev.off()
 
-## 6. Produce and export figures -----------------------------------------------
+## 6. Export data --------------------------------------------------------------
 
 zj_lichen <- jags.samples(jm,
                           variable.names = c("plot_richness", "scaled_rl"),

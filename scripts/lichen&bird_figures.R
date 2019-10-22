@@ -19,6 +19,8 @@ require("data.table")
 
 ## 3. Load and explore data ----------------------------------------------------
 
+f_data <- read.csv("data/forest_data_uppland_plot.csv")
+
 load("clean/combined_pred_2017_3m_sc_backscaled.rdata")
 c_2017_3 <- zj_pred_2017
 load("clean/combined_pred_2017_5m_sc_backscaled.rdata")
@@ -44,7 +46,58 @@ bpr_2017 <- zj_pred
 load("clean/rb_2018.rdata")
 bpr_2018 <- zj_pred
 
-## 4. Make graphs for birds and lichens for all heightbreaks and both ----------
+## 4. Make figure showing Overstory densities vs. the basal area.
+
+## Chose only plots used in this study:
+f_data <- droplevels(f_data[f_data$plot %in% bpr_2017$plotnames, ])
+
+## Add basal area: 
+f_data$ba_tree <- (f_data$average_dbh_all_alive/2)^2*pi
+f_data$ba_tree <- f_data$ba_tree/10000 ## Calculate m2 from cm2 
+f_data$ba <- f_data$ba_tree*f_data$nr_all_alive/(pi*.03)
+
+## Create groups for all three heightbreaks and both ud and od:
+
+od_data <- melt(f_data[, c(9:11, 31)], measure.vars = colnames(f_data[, 9:11]))
+levels(od_data$variable) <- c("heightbreak = 3m", 
+                              "heightbreak = 5m", 
+                              "heightbreak = 7m")
+od_data$story <- "overstory"
+
+ud_data <- melt(f_data[, c(13:15, 31)], measure.vars = colnames(f_data[, 13:15]))
+levels(ud_data$variable) <- c("heightbreak = 3m", 
+                              "heightbreak = 5m", 
+                              "heightbreak = 7m")
+ud_data$story <- "understory"
+
+p_data <- rbind(od_data, ud_data)
+colnames(p_data)[2] <- "heightbreak"
+
+O <- ggplot(p_data, aes(x = ba, y = value, colour = heightbreak)) +
+     geom_rect(aes(xmin = 12, xmax = 20, ymax = Inf, ymin = -Inf, 
+                   fill = "basal area after thinning"),
+               color = NA) +
+     scale_fill_manual("", 
+                       breaks = "basal area after thinning", 
+                       values = "lightgrey") +
+     geom_smooth(method = "lm", 
+                 formula = y ~ x, 
+                 se = FALSE,
+                 size = 2,
+                 linetype = "dashed") +
+     geom_point(size = 6) +
+     facet_grid(story ~ ., scales = "free_y") +
+     xlab("basal area (m2/ha)") + 
+     ylab("vegetation density (% laser returns above/below heightbreak)") + 
+     theme_classic(40) +
+     theme(legend.position = c(0.65, 0.5), 
+           legend.key.size = unit(3, 'lines'),
+           legend.title = element_blank(),
+           legend.key = element_rect(fill = "white", colour = "black"))
+
+png("figures/vd_vs_ba.png", 9000/4, 12000/4, "px", res = 600/4); O; dev.off()
+
+## 5. Make graphs for birds and lichens for all heightbreaks and both ----------
 ##    understory and overstory density for 2017
 
 ## Make data set:
@@ -124,7 +177,7 @@ g1 + g2 + g3 + g4 +
 
 dev.off()
 
-## 5. Make graphs for birds and lichens for all heightbreaks and both ----------
+## 6. Make graphs for birds and lichens for all heightbreaks and both ----------
 ##    understory and overstory density for 2017 with summed richness
 
 ## Make data set:
@@ -169,7 +222,7 @@ p1 + p2 + p3 + p4 +
 
 dev.off()
 
-## 6. Make graphs for age with absolute richness values ------------------------
+## 7. Make graphs for age with absolute richness values ------------------------
 
 ## Stand dbh:
 
@@ -210,7 +263,7 @@ q1 + q2 + q3 +
 
 dev.off()
 
-## 7. Make graphs for difference in species richness per plot ------------------
+## 8. Make graphs for difference in species richness per plot ------------------
 
 b_2017 <- data.frame(rb_mean = summary(bpr_2017$richness, mean)$stat,
                      rb_sd = summary(bpr_2017$richness, sd)$stat,
