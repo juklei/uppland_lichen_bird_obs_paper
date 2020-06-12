@@ -63,7 +63,7 @@ b_2017 <- data.frame(r_mean_sc = summary(bpr_2017$scaled_rb, mean)$stat,
 d_all <- rbind(b_2017, l_2018)
 ## --
 
-## Chose the following code section for the 2017 bird data:
+## Chose the following code section for the 2018 bird data:
 # b_2018 <- data.frame(r_mean_sc = summary(bpr_2018$scaled_rb, mean)$stat,
 #                      r_sd_sc = summary(bpr_2018$scaled_rb, sd)$stat,
 #                      obs_year = 2018,

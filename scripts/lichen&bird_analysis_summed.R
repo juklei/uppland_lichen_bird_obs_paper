@@ -61,8 +61,8 @@ d_summed <- d_summed[, list(r_mean = sum(r_mean_sc), r_sd = sqrt(sum(r_var_sc)))
                      by = "plot"]
 ## --
 
-## Chose the following code section for the 2017 bird data:
-# b_2018 <- data.frame(r_mean_sc = summary(bpr_2018$scaled_rb, mean)$stat,
+## Chose the following code section for the 2018 bird data:
+# b_2018 <- data.table(r_mean_sc = summary(bpr_2018$scaled_rb, mean)$stat,
 #                      r_var_sc = summary(bpr_2018$scaled_rb, sd)$stat^2,
 #                      plot = bpr_2018$plotnames)
 # l_2018 <- droplevels(l_2018[l_2018$plot %in% b_2018$plot, ])

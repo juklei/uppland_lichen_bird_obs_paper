@@ -1,4 +1,5 @@
-## This data set creates species accumulation data
+## This script creates species accumulation curves and then fits a Michaelis-
+## Menten function to the curves and exports the asymptotic richness.
 ##
 ## The species accumulation part:
 ## We want to shuffle the order of the trees on each plot n times.
@@ -148,7 +149,7 @@ samples <- 10000
 n.thin <- 5
 
 zc <- coda.samples(jm,
-                   variable.names = "plot_richness",
+                   variable.names = c("lambda_rich", "lambda_sat"),
                    n.iter = samples, 
                    thin = n.thin)
 
