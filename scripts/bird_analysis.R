@@ -2,7 +2,7 @@
 ## Calculate this script for each year seperately
 ## 
 ## First edit: 20190326
-## Last edit: 20190626
+## Last edit: 20200612
 ##
 ## Author: Julian Klein
 
@@ -15,14 +15,9 @@ library(rjags)
 library(coda)
 library(magrittr)
 library(reshape2)
+library(data.table)
 
 ## 2. Define or source functions used in this script ---------------------------
-
-dir.create("results")
-dir.create("figures")
-
-## Print all rows for mcmc outputs
-options(max.print = 10E5)
 
 ## Backscale function
 backscale <- function(pred_data, model_input_data) {
@@ -36,14 +31,23 @@ backscale <- function(pred_data, model_input_data) {
 
 dir("clean")
 
-bpo <- read.csv("clean/bpo_double_50.csv")
+bpo <- read.csv("data/bird_data.csv")
 head(bpo)
 str(bpo)
+
+dir.create("results")
+dir.create("results")
+dir.create("figures")
+
+## Calculate number of observation per species:
+tmp <- data.table(bpo[, c("species", "n_obs")])
+tmp <- tmp[, list("sum" = sum(n_obs)), by = "species"]
+capture.output(tmp) %>% write(., "results/bird_occurrences.txt")
 
 ## 4. The model ----------------------------------------------------------------
 
 ## Do everything for one year each:
-bpo <- droplevels(bpo[bpo$obs_year == 2017, ])
+bpo <- droplevels(bpo[bpo$obs_year == 2018, ]) ## Change 2017/2018 here !!!!!!!!
 
 ## Create data arrays:
 
@@ -74,7 +78,7 @@ inits <-  list(list(occ_true = T1,
                     eta = matrix(0, nrow = data$nspecies, ncol = 2))
                )
 
-model <- "scripts/JAGS/bird_JAGS_detection_part.R"
+model <- "scripts/JAGS/bird_part.R"
 
 jm <- jags.model(model,
                  data = data,
@@ -82,89 +86,47 @@ jm <- jags.model(model,
                  inits = inits, 
                  n.chains = 1) 
 
-burn.in <-  10000
+burn.in <-  50000
 
 update(jm, n.iter = burn.in) 
 
-samples <- 10000
-n.thin <- 5
+samples <- 100000
+n.thin <- 50
 
 zc <- coda.samples(jm,
-                   variable.names = c("mu_eta",
-                                      "probs",
-                                      "p_occ",
-                                      "p_det",
-                                      "Sigma"), 
+                   variable.names = c("mu_eta", "probs", "Sigma", 
+                                      "p_occ", "p_det"), 
                    n.iter = samples, 
                    thin = n.thin)
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_bird_det_2018.txt")
+  write(., "results/parameters_bird_part_2018.txt") ## Change 2017/2018 here !!!
 
 ## 5. Validate the model and export validation data and figures ----------------
 
-pdf("figures/plot_zc_bird_det_2018.pdf")
+pdf("figures/plot_bird_part_2018.pdf") ## Change 2017/2018 here !!!!!!!!!!!!!!!!
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_bird_det_2018.txt")
+  write(., "results/diagnostics_bird_part_2018.txt") ## Change 2017/2018 here !!
 
-## Produce validation metrics: 
-zj_val <- jags.samples(jm, 
-                       variable.names = c("mean_nseen", 
-                                          "mean_nseen_sim",
-                                          "p_mean", 
-                                          "cv_nseen", 
-                                          "cv_nseen_sim", 
-                                          "p_cv", 
-                                          "fit", 
-                                          "fit_sim",
-                                          "p_fit"), 
-                       n.iter = samples, 
-                       thin = n.thin)
-
-## Fit of mean:
-plot(zj_val$mean_nseen, 
-     zj_val$mean_nseen_sim, 
-     xlab = "mean real", 
-     ylab = "mean simulated", 
-     cex = .05)
-abline(0, 1)
-p <- summary(zj_val$p_mean, mean)
-text(x = 0.6, y = 0.7, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
-
-## Fit of variance:
-plot(zj_val$cv_nseen, 
-     zj_val$cv_nseen_sim, 
-     xlab = "cv real", 
-     ylab = "cv simulated", 
-     cex = .05)
-abline(0,1)
-p <- summary(zj_val$p_cv, mean)
-text(x = 1.4, y = 1.7, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
-
-## Overall fit:
-plot(zj_val$fit, 
-     zj_val$fit_sim, 
-     xlab = "ssq real", 
-     ylab = "ssq simulated", 
-     cex = .05)
-abline(0,1)
-p <- summary(zj_val$p_fit, mean)
-text(x = 850, y = 700, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
-
-## 6. Produce output and export data for seperate analysis ---------------------
+## 6. Produce results and export data for seperate analysis --------------------
 
 ## Produce predictions:
-zj_pred <- jags.samples(jm, 
+zj_bird <- jags.samples(jm, 
                         variable.names = c("richness", "scaled_rb"),
                         n.iter = samples, 
                         thin = n.thin)
 
-zj_pred$plotnames <- levels(bpo$plot)
+zj_bird$plotnames <- levels(bpo$plot)
 
-save(zj_pred, file = "clean/rb_2018.rdata")
+save(zj_bird, file = "clean/rb_2018.rdata") ## Change 2017/2018 here !!!!!!!!!!!
+
+## Export expected richness quantiles:
+capture.output(summary(zj_bird$richness[], quantile),
+               summary(zj_bird$scaled_rb[], quantile)) %>% 
+  write(., "results/bird_richness_2018.txt") ## Change 2017/2018 here !!!!!!!!!!
 
 ## -------------------------------END-------------------------------------------

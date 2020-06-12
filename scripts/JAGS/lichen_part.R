@@ -1,4 +1,4 @@
-## lichen lpsac model
+## lichen model
 ##
 ## First edit: 20190605
 ## Last edit: 20190625
@@ -39,7 +39,6 @@ model{
         obs_pred[m,k,p] <- (plot_richness[k,p]*m)/(sat_speed[k,p] + m)
   }}}
 
-  
   for(p in 1:nplot){
     for(k in 1:nrep){
       obs_limit[k,p] <- (plot_richness[k,p]*10E6)/(sat_speed[k,p] + 10E6)

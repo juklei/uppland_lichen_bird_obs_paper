@@ -42,30 +42,6 @@ model{
   Omega[1:2, 1:2] ~ dwish(R[,], df)
   Sigma[1:2, 1:2] <- inverse(Omega[,])
 
-  ## Model validation:
-
-  ## Bayesian p-value:
-  mean_nseen <- mean(nseen[,])
-  mean_nseen_sim <- mean(nseen_sim[,])
-  p_mean <- step(mean_nseen_sim - mean_nseen)
-
-  ## Coefficient of variation:
-  cv_nseen <- sd(nseen[,])/mean_nseen
-  cv_nseen_sim <- sd(nseen_sim[,])/mean_nseen_sim
-  p_cv <- step(cv_nseen - cv_nseen_sim)
-
-  ## Model fit:
-  for(k in 1:nspecies){
-    for(i in 1:nsites){
-      sq[i,k] <- (nseen[i,k] - occ_true[i,k]*p_det[k]*nvisits[i,k])^2
-      sq_sim[i,k] <- (nseen_sim[i,k] - occ_true[i,k]*p_det[k]*nvisits[i,k])^2
-    }
-  }
-
-  fit <- sum(sq[,])
-  fit_sim <- sum(sq_sim[,])
-  p_fit <- step(fit_sim - fit)
-  
   ## Predictions:
   
   ## Correlation coefficient

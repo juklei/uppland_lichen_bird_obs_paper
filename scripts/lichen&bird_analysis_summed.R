@@ -1,7 +1,7 @@
 ## summed bird and lichen richness
 ## 
 ## First edit: 20190716
-## Last edit: 20191007
+## Last edit: 20200612
 ##
 ## Author: Julian Klein
 
@@ -34,15 +34,15 @@ backscale <- function(pred_data, model_input_data) {
 
 ## 3. Load and explore data ----------------------------------------------------
 
-bpo <- read.csv("clean/bpo_double_50.csv")
+forest <- read.csv("data/forest_data.csv")
 
 dir("clean")
 
 load("clean/rb_2017.rdata")
-bpr_2017 <- zj_pred
+bpr_2017 <- zj_bird
 load("clean/rb_2018.rdata")
-bpr_2018 <- zj_pred
-load("clean/lichen_richness.rdata")
+bpr_2018 <- zj_bird
+load("clean/rl.rdata")
 
 ## 4. The model ----------------------------------------------------------------
 
@@ -52,13 +52,16 @@ l_2018 <- data.table(r_mean_sc = apply(zj_lichen$scaled_rl, 2, mean),
                      r_var_sc = apply(zj_lichen$scaled_rl, 2, sd)^2,
                      plot = zj_lichen$plotnames)
 
+## Chose the following code section for the 2017 bird data:
 b_2017 <- data.table(r_mean_sc = summary(bpr_2017$scaled_rb, mean)$stat,
                      r_var_sc = summary(bpr_2017$scaled_rb, sd)$stat^2,
                      plot = bpr_2017$plotnames)
 d_summed <- rbind(l_2018, b_2017)
 d_summed <- d_summed[, list(r_mean = sum(r_mean_sc), r_sd = sqrt(sum(r_var_sc))),
                      by = "plot"]
+## --
 
+## Chose the following code section for the 2017 bird data:
 # b_2018 <- data.frame(r_mean_sc = summary(bpr_2018$scaled_rb, mean)$stat,
 #                      r_var_sc = summary(bpr_2018$scaled_rb, sd)$stat^2,
 #                      plot = bpr_2018$plotnames)
@@ -66,17 +69,18 @@ d_summed <- d_summed[, list(r_mean = sum(r_mean_sc), r_sd = sqrt(sum(r_var_sc)))
 # d_summed <- rbind(b_2018, l_2018)
 # d_summed <- d_summed[, list(r_mean = sum(r_mean_sc), r_sd = sqrt(sum(r_var_sc))),
 #                      by = "plot"]
+##--
 
-d_summed <- merge(d_summed, 
-                  unique(bpo[, c(2, 8:14, 20)]), all.x = TRUE, by = "plot")
+## Combine with forest data:
+d_summed <- merge(d_summed, forest, all.x = TRUE, by = "plot")
 
 ## Create model data set:
 data <- list(nobs = nrow(d_summed),
              r_mean = d_summed$r_mean,
              r_sd = d_summed$r_sd,
-             od = scale(d_summed$PercentAbove7m),
-             ud = scale(d_summed$PercentBelow7m),
-             sdbh = scale(d_summed$average_dbh_all_alive))
+             od = scale(d_summed$od3), ## Chose height level break !!!!!!!!!!!!!
+             ud = scale(d_summed$ud3), ## Chose height level break !!!!!!!!!!!!!
+             dbh = scale(d_summed$DBH_ground))
 
 ## Add prediction data:
 
@@ -86,28 +90,19 @@ data$ud_pred <- seq(min(data$ud), max(data$ud), 0.05)
 ## Overstory density:
 data$od_pred <- seq(min(data$od), max(data$od), 0.05)
 
-## Sdbh:
-data$sdbh_pred <- seq(min(data$sdbh), max(data$sdbh), 0.05)
-
 str(data)
 
 inits <-  list(list(alpha = 5,
-                    beta_ud = 0.5,
-                    beta_od = 0.5,
-                    beta_sdbh = 0.5,
+                    beta_ud = 0.5, beta_od = 0.5, beta_dbh = 0.5,
                     plot_sd = 0.8),
                list(alpha = -2,
-                    beta_ud = 0.7,
-                    beta_od = 0.1,
-                    beta_sdbh = 0,
+                    beta_ud = 0.7, beta_od = 0.1, beta_dbh = 0,
                     plot_sd = 0.1),
                list(alpha = 0,
-                    beta_ud = 1,
-                    beta_od = 1,
-                    beta_sdbh = -0.5,
+                    beta_ud = 1, beta_od = 1, beta_dbh = -0.5,
                     plot_sd = 1.1))
 
-model <- "scripts/JAGS/lichen&bird_JAGS_summed.R"
+model <- "scripts/JAGS/lichen&bird_summed.R"
 
 jm <- jags.model(model,
                  data = data,
@@ -126,14 +121,14 @@ zc <- coda.samples(jm,
                    variable.names = c("alpha",
                                       "beta_ud",
                                       "beta_od",
-                                      "beta_sdbh",
+                                      "beta_dbh",
                                       "plot_sd"), 
                    n.iter = samples, 
                    thin = n.thin)
 
 ## Export parameter estimates:
 capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>% 
-  write(., "results/parameters_lb_summed_2017_7m.txt")
+  write(., "results/parameters_summed_2017_3m.txt") ## Heightbreak name !!!!!!!!
 
 ## 5. Validate the model and export validation data and figures ----------------
 
@@ -141,56 +136,47 @@ capture.output(summary(zc), HPDinterval(zc, prob = 0.95)) %>%
 zc_mat <- as.matrix(zc[[1]]); dimnames(zc_mat)
 plot(zc_mat[, 2], zc_mat[, 3])
 
-pdf("figures/plot_zc_lb_summed_2017_7m.pdf")
+pdf("figures/plot_summed_2017_3m.pdf") ## Heightbreak name !!!!!!!!!!!!!!!!!!!!!
 plot(zc)
 dev.off()
 
 capture.output(raftery.diag(zc), heidel.diag(zc)) %>% 
-  write(., "results/diagnostics_lb_summed_2017_7m.txt")
+  write(., "results/diagnostics_summed_2017_3m.txt") ## Heightbreak name !!!!!!!
 
-# # Produce validation metrics:
-# zj_val <- jags.samples(jm,
-#                        variable.names = c("mean_r_mean",
-#                                           "mean_r_sim",
-#                                           "p_mean",
-#                                           "cv_r_mean",
-#                                           "cv_r_sim",
-#                                           "p_cv",
-#                                           "fit",
-#                                           "fit_sim",
-#                                           "p_fit"),
-#                        n.iter = samples,
-#                        thin = n.thin)
-# 
-# ## Fit of mean:
-# plot(zj_val$mean_r_mean,
-#      zj_val$mean_r_sim,
-#      xlab = "mean real",
-#      ylab = "mean simulated",
-#      cex = .05)
-# abline(0, 1)
-# p <- summary(zj_val$p_mean, mean)
-# text(x = -0.08, y = 0.1, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
-# 
-# ## Fit of variance:
-# plot(zj_val$cv_r_mean,
-#      zj_val$cv_r_sim,
-#      xlab = "cv real",
-#      ylab = "cv simulated",
-#      cex = .05)
-# abline(0,1)
-# p <- summary(zj_val$p_cv, mean)
-# text(x = -18, y = 2000, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
-# 
-# ## Overall fit:
-# plot(zj_val$fit,
-#      zj_val$fit_sim,
-#      xlab = "ssq real",
-#      ylab = "ssq simulated",
-#      cex = .05)
-# abline(0,1)
-# p <- summary(zj_val$p_fit, mean)
-# text(x = 8, y = 10.85, paste0("P=", round(as.numeric(p[1]), 4)), cex = 1.5)
+# Produce validation metrics:
+zj_val <- jags.samples(jm,
+                       variable.names = c("mean_r_mean", "mean_r_sim", "p_mean",
+                                          "sd_r_mean", "sd_r_sim", "p_sd", 
+                                          "fit", "fit_sim", "p_fit"),
+                       n.iter = samples,
+                       thin = n.thin)
+
+## Fit of mean:
+plot(zj_val$mean_r_mean,
+     zj_val$mean_r_sim,
+     xlab = "mean real",
+     ylab = "mean simulated",
+     cex = .05)
+abline(0, 1)
+mean(zj_val$p_mean)
+
+## Fit of variance:
+plot(zj_val$sd_r_mean,
+     zj_val$sd_r_sim,
+     xlab = "sd real",
+     ylab = "sd simulated",
+     cex = .05)
+abline(0,1)
+mean(zj_val$p_sd)
+
+## Overall fit:
+plot(zj_val$fit,
+     zj_val$fit_sim,
+     xlab = "ssq real",
+     ylab = "ssq simulated",
+     cex = .05)
+abline(0,1)
+mean(zj_val$p_fit)
 
 ## 6. Produce and export data for fancy figures --------------------------------
 
@@ -202,6 +188,7 @@ zj_pred <- jags.samples(jm,
 zj_pred_2017_sum <- zj_pred
 zj_pred_2017_sum$ud <- backscale(data$ud_pred, data$ud)
 zj_pred_2017_sum$od <- backscale(data$od_pred, data$od)
-save(zj_pred_2017_sum, file = "clean/summed_pred_2017_7m.rdata")
+save(zj_pred_2017_sum, 
+     file = "clean/summed_pred_2017_3m.rdata") ## Heightbreak name !!!!!!!!!!!!!
 
 ## -------------------------------END-------------------------------------------
