@@ -26,7 +26,7 @@ library(data.table)
 
 ## 2. Load and explore data ----------------------------------------------------
 
-l_obs <- as.data.table(read.csv("data/epiphytic_lichen_data.csv")) ## Replace with link to dryad!
+l_obs <- as.data.table(read.csv("data/epiphytic_lichen_data.csv"))
 
 dir.create("results")
 dir.create("clean")
